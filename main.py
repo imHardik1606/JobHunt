@@ -19,7 +19,7 @@ from db.store import (
     init_db, save_jobs, get_new_jobs, update_status, 
     update_score, get_unscored_jobs, get_jobs_by_status, get_all_jobs
 )
-from config import MIN_SCORE_TO_SHOW, validate_config
+from config import MIN_SCORE_TO_SHOW, validate_config, get_department_keywords, DEPARTMENTS
 from scorer.research import run_outreach_research, save_outreach_report
 
 console = Console()
@@ -28,9 +28,18 @@ def cmd_scan():
     """
     Scans portals for new jobs and scores them using AI.
     """
-    console.print(Panel("[bold blue]Scanning job portals...[/]", expand=False))
+    department = sys.argv[2].lower() if len(sys.argv) > 2 else "engineering"
     
-    jobs = scan_all()
+    try:
+        # Validate department and get keywords to ensure it exists
+        get_department_keywords(department)
+    except ValueError as e:
+        console.print(f"[bold red]Error:[/] {e}")
+        return
+
+    console.print(Panel(f"[bold blue]Scanning {department.upper()} jobs across all portals...[/]", expand=False))
+    
+    jobs = scan_all(department=department)
     if not jobs:
         console.print("\n[bold red]No jobs found.[/]")
         console.print("TIP: Troubleshooting: Check your internet connection or verify that company IDs in [bold]config.py[/] are correct.")
@@ -47,7 +56,8 @@ def cmd_scan():
         return
     
     # Pre-filtering based on Keywords to save AI tokens and time
-    from config import ROLE_KEYWORDS, NEGATIVE_KEYWORDS
+    keywords = get_department_keywords(department)
+    from config import NEGATIVE_KEYWORDS
     to_score = []
     skipped_count = 0
     
@@ -61,7 +71,7 @@ def cmd_scan():
             continue
 
         # 2. Check for positive keywords (Include relevant roles)
-        if any(kw.lower() in title_lower for kw in ROLE_KEYWORDS):
+        if any(kw.lower() in title_lower for kw in keywords):
             to_score.append(job)
         else:
             # Silently archive irrelevant roles
@@ -98,24 +108,31 @@ def cmd_scan():
         
     console.print("\n[bold green]Scan complete![/] Run [cyan]'python main.py review'[/] to see high-potential leads.")
 
-def cmd_review():
+def cmd_review(department=None):
     """
     Interactive review of high-scoring job leads.
     """
     while True:
         all_new = get_new_jobs()
+        
+        # Filter by department if specified
+        if department:
+            all_new = [j for j in all_new if j.get("department") == department]
+            
         # Filter by minimum score
         high_potential = [j for j in all_new if (j.get("score") or 0) >= MIN_SCORE_TO_SHOW and j.get("status") == "new"]
         
         if not high_potential:
-            console.print(f"\n[bold yellow]No pending high-potential jobs found (Score >= {MIN_SCORE_TO_SHOW}).[/]")
-            console.print("Try running [cyan]'python main.py scan'[/] to find more roles.")
+            msg = f"No pending high-potential {department.upper() if department else ''} jobs found"
+            console.print(f"\n[bold yellow]{msg} (Score >= {MIN_SCORE_TO_SHOW}).[/]")
+            console.print(f"Try running [cyan]'python main.py scan {department if department else ''}'[/] to find more roles.")
             return
 
         # Sort by score descending
         high_potential.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-        table = Table(title="JobHunt Opportunity Dashboard", box=None, header_style="bold blue")
+        title = f"JobHunt Opportunity Dashboard {f'({department.upper()})' if department else ''}"
+        table = Table(title=title, box=None, header_style="bold blue")
         table.add_column("#", justify="right", style="cyan")
         table.add_column("Match", justify="center")
         table.add_column("Company", style="bold")
@@ -311,10 +328,11 @@ def main():
 
         help_text = Text.from_markup(
             f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
-            "Usage: [bold cyan]python main.py <command>[/]\n\n"
+            "Usage: [bold cyan]python main.py <command> [args][/]\n\n"
             "Commands:\n"
-            "  [bold green]scan[/]              Fetch new jobs and score them with AI\n"
-            "  [bold green]review[/]            Browse high-scoring jobs and generate resumes\n"
+            "  [bold green]scan [dept][/]      Scan jobs by department (default: engineering)\n"
+            "  Available: engineering, data, product, design, sales, marketing\n"
+            "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
             "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
             "  [bold green]status[/]            Show application pipeline statistics"
         )
@@ -327,7 +345,8 @@ def main():
         if command == "scan":
             cmd_scan()
         elif command == "review":
-            cmd_review()
+            department = sys.argv[2].lower() if len(sys.argv) > 2 else None
+            cmd_review(department=department)
         elif command == "status":
             cmd_status()
         elif command == "outreach_research":

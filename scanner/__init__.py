@@ -3,7 +3,7 @@ from scanner.greenhouse import fetch_jobs as fetch_greenhouse
 from scanner.lever import fetch_jobs as fetch_lever
 from scanner.ashby import fetch_jobs as fetch_ashby
 from scanner.base import Job
-from config import COMPANIES, ROLE_KEYWORDS
+from config import COMPANIES, get_department_keywords
 
 PORTAL_FETCHERS = {
     "greenhouse": fetch_greenhouse,
@@ -28,18 +28,21 @@ def clean_html(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-def is_relevant(job: Job) -> bool:
+def is_relevant(job: Job, keywords: list[str]) -> bool:
     """
-    Checks if a job is relevant based on ROLE_KEYWORDS.
+    Checks if a job is relevant based on keywords.
     Case-insensitive match against title and description.
     """
     search_text = (job.title + " " + job.description).lower()
-    return any(keyword.lower() in search_text for keyword in ROLE_KEYWORDS)
+    return any(keyword.lower() in search_text for keyword in keywords)
 
-def scan_all() -> list[Job]:
+def scan_all(department: str = "engineering") -> list[Job]:
     """
     Orchestrates the scanning of all configured companies across different portals.
     """
+    keywords = get_department_keywords(department)
+    print(f"\nScanning for [bold]{department.upper()}[/] roles...")
+    
     all_relevant_jobs = []
     
     for company in COMPANIES:
@@ -67,7 +70,8 @@ def scan_all() -> list[Job]:
             # Clean description for relevance check and for later AI use
             job.description = clean_html(job.description)
             
-            if is_relevant(job):
+            if is_relevant(job, keywords):
+                job.department = department
                 all_relevant_jobs.append(job)
                 relevant_count += 1
         

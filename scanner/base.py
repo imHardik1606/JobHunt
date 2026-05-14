@@ -13,6 +13,7 @@ class Job:
     url: str
     description: str
     portal: str
+    department: Optional[str] = None
     posted_date: Optional[str] = None
     score: Optional[float] = None
     status: str = "new"

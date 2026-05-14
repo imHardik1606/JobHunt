@@ -32,13 +32,32 @@ COMPANIES = [
     {"name": "Vercel", "portal": "ashby", "id": "vercel"},
 ]
 
-# Keywords for job relevance (Targeting BCA '26 Grad & AI/Backend Profile)
-ROLE_KEYWORDS = [
-    "intern", "internship", "graduate", "junior", "associate", "new grad", "2026",
-    "software engineer", "backend", "python", "developer", "swe",
-    "fastapi", "ai engineer", "llm", "rag", "embeddings", "typescript", "golang",
-    "api engineer", "full stack", "fullstack", "ml engineer", "founding engineer"
-]
+# Department-specific keywords for job relevance
+DEPARTMENTS = {
+    "engineering": [
+        "software engineer", "backend", "frontend", "full stack", "fullstack",
+        "ml engineer", "data engineer", "devops", "platform", "infrastructure",
+        "sre", "mobile", "ios", "android", "api", "python", "node", "golang"
+    ],
+    "data": [
+        "data scientist", "data analyst", "machine learning", "ml", "ai",
+        "research scientist", "analytics", "data engineer", "nlp"
+    ],
+    "product": [
+        "product manager", "pm", "product analyst", "product designer"
+    ],
+    "design": [
+        "designer", "ux", "ui", "product design", "figma"
+    ],
+    "sales": [
+        "sales", "account executive", "business development", "bdm", "bdr", "sdr"
+    ],
+    "marketing": [
+        "marketing", "growth", "content", "seo", "performance marketing"
+    ],
+}
+
+DEFAULT_DEPARTMENT = "engineering"
 
 # Negative Keywords (Discard senior/unsuitable roles immediately)
 NEGATIVE_KEYWORDS = [
@@ -69,3 +88,10 @@ def validate_config() -> bool:
         print("⚠️  Warning: GOOGLE_SHEETS_ID is not set. Tracking to Google Sheets will be disabled.")
 
     return True
+
+def get_department_keywords(department: str) -> list[str]:
+    dept = department.lower().strip()
+    if dept not in DEPARTMENTS:
+        available = ", ".join(DEPARTMENTS.keys())
+        raise ValueError(f"Unknown department '{dept}'. Available: {available}")
+    return DEPARTMENTS[dept]

@@ -21,11 +21,19 @@ def init_db():
                 url TEXT,
                 description TEXT,
                 portal TEXT,
+                department TEXT,
                 score REAL,
                 status TEXT DEFAULT 'new',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Simple migration: check if department column exists
+        cursor = conn.execute("PRAGMA table_info(jobs)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "department" not in columns:
+            conn.execute("ALTER TABLE jobs ADD COLUMN department TEXT")
+            
         conn.commit()
 
 def save_jobs(jobs: List) -> int:
@@ -58,6 +66,7 @@ def save_jobs(jobs: List) -> int:
             item.get("url"),
             item.get("description"),
             item.get("portal"),
+            item.get("department"),
             item.get("score")
         )
         for item in data
@@ -67,8 +76,8 @@ def save_jobs(jobs: List) -> int:
         before = conn.total_changes
         conn.executemany("""
             INSERT OR IGNORE INTO jobs 
-            (id, title, company, location, url, description, portal, score)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, title, company, location, url, description, portal, department, score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, params)
         conn.commit()
         after = conn.total_changes
