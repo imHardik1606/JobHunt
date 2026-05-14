@@ -252,32 +252,44 @@ def cmd_status():
     else:
         console.print("No applications logged yet.")
 
-def cmd_outreach(company: str, role: str):
-    """
-    Generates a deep outreach research package for a specific company and role.
-    """
-    console.print(Panel(f"[bold magenta]Starting Outreach Research Assistant Mode[/]\n[cyan]Target:[/] {role} at {company}", expand=False))
-    
-    with Progress() as progress:
-        task = progress.add_task("[magenta]Researching with Gemini...", total=None)
-        report_content = run_outreach_research(company, role)
-    
-    if "failed" in report_content.lower() or "error" in report_content.lower():
-        console.print(f"\n[bold red]Error:[/] {report_content}")
+def cmd_outreach_research():
+    # Parse company and role from sys.argv
+    # User runs: python main.py outreach_research "Razorpay Backend Engineer Intern"
+    # or:        python main.py outreach_research "Razorpay" "Backend Engineer Intern"
+
+    if len(sys.argv) < 3:
+        console.print("[red]Usage: python main.py outreach_research \"Company Role\"[/]")
+        console.print("[yellow]Example: python main.py outreach_research \"Razorpay Backend Engineer Intern\"[/]")
         return
 
-    # Display a preview of the research
-    console.print(Panel(report_content[:500] + "...", title="Research Preview", border_style="magenta"))
-    
-    # Save to report
-    report_path = save_outreach_report(report_content, company, role)
-    if report_path:
-        console.print(f"\n[bold green]Success![/] Outreach package saved to: [underline cyan]{report_path}[/]")
-        
-        if Confirm.ask("Open the report now?", default=True):
-            webbrowser.open(os.path.abspath(report_path))
+    # Join all args after "outreach_research" as the full input
+    full_input = " ".join(sys.argv[2:])
+
+    # Try to split company and role: first word = company, rest = role
+    # If only one word given, use it as company and prompt for role
+    parts = full_input.split(" ", 1)
+    if len(parts) == 2:
+        company = parts[0]
+        role = parts[1]
     else:
-        console.print("[bold red]Error saving report.[/]")
+        company = parts[0]
+        role = Prompt.ask("Enter the target role")
+
+    console.print(f"\n[bold blue]Generating outreach research for:[/]")
+    console.print(f"  Company: [bold]{company}[/]")
+    console.print(f"  Role: [bold]{role}[/]\n")
+
+    with console.status("Calling Gemini... (this takes 10-20 seconds)"):
+        result = run_outreach_research(company, role)
+
+    # Display with rich Markdown
+    from rich.markdown import Markdown
+    console.print(Markdown(result))
+
+    # Ask to save
+    if Confirm.ask("\nSave this research to reports/ folder?"):
+        path = save_outreach_report(result, company, role)
+        console.print(f"[green]Saved to: {path}[/]")
 
 def main():
     # Database always initialized
@@ -303,7 +315,7 @@ def main():
             "Commands:\n"
             "  [bold green]scan[/]              Fetch new jobs and score them with AI\n"
             "  [bold green]review[/]            Browse high-scoring jobs and generate resumes\n"
-            "  [bold green]outreach_research[/]  Generate 5-section outreach package for a target role\n"
+            "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
             "  [bold green]status[/]            Show application pipeline statistics"
         )
         console.print(Panel(help_text, title="JobHunt CLI", expand=False))
@@ -319,10 +331,7 @@ def main():
         elif command == "status":
             cmd_status()
         elif command == "outreach_research":
-            if len(sys.argv) < 4:
-                console.print("[bold red]Usage:[/] python main.py outreach_research \"Company\" \"Role\"")
-            else:
-                cmd_outreach(sys.argv[2], sys.argv[3])
+            cmd_outreach_research()
         else:
             console.print(f"[red]Unknown command: {command}[/]")
     except KeyboardInterrupt:
