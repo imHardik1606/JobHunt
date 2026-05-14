@@ -1,83 +1,90 @@
 # 🎯 JobHunt: AI-Powered Career Pipeline
 
-JobHunt is a personal automation pipeline designed to eliminate the friction of modern job searching. It programmatically scans job portals, scores your fit using Gemini AI, and generates tailored, premium resumes in seconds.
+JobHunt is a personal automation pipeline designed to eliminate the friction of modern job searching. It programmatically scans job portals, scores your fit with deep AI reasoning, and generates hyper-personalized application packages in seconds.
 
-## What this does
-JobHunt scans high-frequency job portals (Greenhouse, Lever, Ashby) and scores every role against your unique CV using Google Gemini AI. If a role is a match, it generates an advanced tailored resume in PDF format (Jake's Template style) and tracks your application progress in a centralized Google Sheet. **100% free with no monthly subscriptions.**
+## 🚀 Key Features
 
-## Requirements
+- **Department-Aware Scanning**: Target roles in `engineering`, `data`, `product`, `design`, `sales`, or `marketing`.
+- **Rich AI Scoring**: Every job gets a **Letter Grade (A-F)**, a numerical score, and a "Top Project" recommendation.
+- **Humanized Tailoring**: AI prompt engineering that eliminates "robotic" buzzwords and focuses on concrete outcomes.
+- **Jake's Resume PDF**: Generates professional, single-column LaTeX-style resumes (HTML/CSS → PDF via Playwright).
+- **Outreach Research**: Identifies specific hiring managers and writes personalized LinkedIn/Email messages.
+- **Sincerely Templates**: Automatically extracts copy-paste ready networking templates for your outreach.
+- **Centralized Tracking**: Local SQLite database for persistence + optional Google Sheets syncing.
+
+## 📋 Requirements
 - **Python 3.10+**
 - **Git**
 - **Playwright** (for PDF generation)
+- **Gemini API Key** (Free tier available)
 
-## Quick Start (5 steps)
+## 🛠️ Quick Start
 
-### 1. Clone and Setup
+### 1. Setup Environment
 ```powershell
-git clone https://github.com/yourusername/JobHunt.git
+git clone https://github.com/imHardik1606/JobHunt.git
 cd JobHunt
 python -m venv venv
-.\venv\Scripts\activate  # Windows
+.\venv\Scripts\activate
 pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Create `cv.md`
-Create a file named `cv.md` in the project root. Paste your full CV/Resume in Markdown format. The AI will use this as the "Source of Truth" for all tailoring.
+### 2. Configure
+1. Create `cv.md` in the root and paste your full CV in Markdown.
+2. Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`.
+3. Update `config.py` with the companies you want to monitor.
 
-### 3. Add API Key
-Copy `.env.example` to `.env` and add your **GEMINI_API_KEY**.
-> [!TIP]
-> Get a free API key at [aistudio.google.com](https://aistudio.google.com/). It has a generous free tier (15 RPM) which is plenty for personal job hunting.
-
-### 4. Edit `config.py`
-Open `config.py` and update the `COMPANIES` list with the organizations you want to monitor. See the "Adding More Companies" section below for details.
-
-### 5. Run Scan and Review
+### 3. Run the Pipeline
 ```powershell
-# Step A: Scan all portals and score new jobs
-python main.py scan
+# Scan for jobs (default: engineering)
+python main.py scan engineering
 
-# Step B: Review high-scoring matches and generate resumes
-python main.py review
+# View your ranked matches
+python main.py pipeline
+
+# Start the full application workflow for a specific job
+python main.py apply {job_id}
 ```
 
-## Commands
-| Command | What it does | When to use it |
-| :--- | :--- | :--- |
-| `python main.py scan` | Fetches jobs from all portals in `config.py` and runs AI scoring. | Once or twice a day to find new leads. |
-| `python main.py review` | Opens an interactive dashboard to analyze matches and generate PDFs. | After scanning, to decide which roles to apply for. |
-| `python main.py status` | Shows a summary of applied vs. pending jobs in your local DB. | To track your overall progress. |
-| `python test_pipeline.py` | Verifies your API keys, DB, and PDF tools are working correctly. | During initial setup or troubleshooting. |
+## 🕹️ Commands
 
-## Adding More Companies
-To monitor a new company, add a dictionary to the `COMPANIES` list in `config.py`:
+| Command | Description |
+| :--- | :--- |
+| `python main.py scan [dept]` | Scans all configured companies for roles in the specified department. |
+| `python main.py pipeline [score]` | Shows a ranked table of all scored jobs. Default shows 6+. |
+| `python main.py apply {id}` | **The Master Workflow**: Tailors CV → Generates PDF → Finds Outreach Targets. |
+| `python main.py review [dept]` | Interactive dashboard to deep-dive into job descriptions. |
+| `python main.py status` | Summary of your application pipeline (Pending, Applied, Skipped). |
 
+## 🏗️ Architecture
+
+### Scoring Engine
+JobHunt doesn't just look for keywords. It uses **Gemini 1.5 Flash** to perform a "Deep Match" analysis, returning:
+- **Grade**: A (Immediate Apply) to F (Not a fit).
+- **Match Reasons**: 3 specific technical strengths.
+- **Gaps**: Skills or experience you're missing.
+- **Top Project**: Which project from your CV will impress *this* hiring manager most.
+- **Effort Rating**: How much tailoring is needed (Low/Medium/High).
+
+### Application Package
+When you run `apply`, JobHunt generates an `output/` folder containing:
+1. `Company_Role_tailored.md`: Your AI-optimized resume source.
+2. `Company_Role_Jake.pdf`: A premium, ready-to-send PDF.
+3. `sincerely_Company_Role.md`: Personalized outreach messages for 4-5 specific people at the company.
+
+## 🤝 Adding Companies
+To monitor a new company, add it to `COMPANIES` in `config.py`:
 ```python
-{"name": "CompanyName", "portal": "portal_type", "id": "company_id"}
+{"name": "Anthropic", "portal": "greenhouse", "id": "anthropic"}
 ```
+Support portals: `greenhouse`, `lever`, `ashby`.
 
-**How to find the ID:**
-- **Greenhouse**: Look at the public board URL: `boards.greenhouse.io/COMPANY_ID` (e.g., `boards.greenhouse.io/anthropic`)
-- **Lever**: Look at the jobs URL: `jobs.lever.co/COMPANY_ID` (e.g., `jobs.lever.co/zepto`)
-- **Ashby**: Look at the board URL: `ashbyhq.com/COMPANY_ID` (e.g., `ashbyhq.com/linear`)
+## 💰 Cost
+- **Job Scraping**: ₹0 (Public APIs)
+- **AI Engine**: ₹0 (Gemini Free Tier)
+- **PDF Generation**: ₹0 (Playwright)
+- **Total**: **₹0**
 
-## Google Sheets Setup (Optional)
-1. Go to [Google Cloud Console](https://console.cloud.google.com/).
-2. Create a Project and enable **Google Sheets API** and **Google Drive API**.
-3. Create a **Service Account**, download the JSON key, rename it to `service_account.json`, and place it in the project root.
-4. Create a new Google Sheet and copy its ID from the URL (the part between `/d/` and `/edit`).
-5. Add `GOOGLE_SHEETS_ID="your_id_here"` to your `.env` file.
-6. **Important**: Share your Google Sheet with the email address of your Service Account.
-
-## Cost
-| Component | Provider | Cost |
-| :--- | :--- | :--- |
-| Job Scraping | Public APIs | ₹0 (Free) |
-| AI Scoring/Tailoring | Google Gemini | ₹0 (Free Tier) |
-| PDF Generation | Playwright | ₹0 (Open Source) |
-| Tracking | Google Sheets | ₹0 (Free) |
-| **Total** | | **₹0** |
-
-## Why no auto-apply?
-Most modern company portals (Workday, Greenhouse, Lever) use advanced bot-detection and unique CSRF tokens that make automated form submission fragile and prone to blacklisting your IP. More importantly, every application deserves a "sanity check." The real value of JobHunt is in **finding, filtering, and preparing** high-quality applications so you only spend your energy on the top 5% of roles where you actually have a shot.
+> [!IMPORTANT]
+> Find each outreach target manually using the search strings generated in the report. Replace `[FIRSTNAME]` before sending. Quality > quantity.

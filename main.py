@@ -324,6 +324,11 @@ def cmd_apply_workflow(job):
             console.print(Panel(Markdown(outreach), title=f"Outreach Guide: {company}"))
             report_path = save_outreach_report(outreach, company, role)
             console.print(f"[green]✓ Outreach research saved: {report_path}[/]")
+            
+            # New: Extract copy-paste ready templates for Sincerely extension
+            from scorer.research import extract_sincerely_templates
+            sincerely_path = extract_sincerely_templates(outreach, company, role)
+            console.print(f"[green]✓ Sincerely templates exported: {sincerely_path}[/]")
 
     # STEP 4: Log everything
     update_status(job_id, "applied")
@@ -339,11 +344,12 @@ def cmd_apply_workflow(job):
 ✓ Resume tailored for [bold]{role}[/] at [bold]{company}[/]
 ✓ PDF: [cyan]{pdf_path if pdf_path else 'Skipped'}[/]
 ✓ Outreach research: [cyan]{report_path if report_path else 'Skipped'}[/]
+✓ Sincerely templates: [cyan]{sincerely_path if report_path else 'Skipped'}[/]
 
 [bold cyan]Next steps:[/]
 1. Review the PDF in the [bold]output/[/] folder
 2. Apply at: [link={job['url']}]{job['url']}[/link]
-3. Find contacts using the LinkedIn search strings in the outreach report
+3. Use the Copy-Paste templates in [bold]{sincerely_path}[/]
 4. Send messages ONE AT A TIME after personalizing [FIRSTNAME]
 """
     console.print(Panel(summary_text, title="Application Package Ready", border_style="green"))

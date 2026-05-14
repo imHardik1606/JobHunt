@@ -95,3 +95,40 @@ def save_outreach_report(content: str, company: str, role: str) -> str:
     except Exception as e:
         print(f"Error saving report: {e}")
         return ""
+
+def extract_sincerely_templates(outreach_content: str, company: str, role: str) -> str:
+    """
+    Parse the outreach research output and extract only the Sincerely templates section.
+    Save them to output/sincerely_{company}_{role}.md
+    Return the file path.
+    """
+    # Find content between "SINCERELY TEMPLATE" markers
+    import re
+    templates = re.findall(
+        r'--- SINCERELY TEMPLATE:.*?--- END TEMPLATE ---',
+        outreach_content,
+        re.DOTALL
+    )
+
+    if not templates:
+        # Fallback: return the full outreach content if no markers found
+        templates = [outreach_content]
+
+    os.makedirs("output", exist_ok=True)
+    filename = f"sincerely_{company}_{role}".replace(" ", "_")[:60]
+    path = f"output/{filename}.md"
+
+    content = f"# Sincerely Templates — {company} | {role}\n"
+    content += f"Generated: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}\n\n"
+    content += "## HOW TO USE\n"
+    content += "1. Install Sincerely from Chrome Web Store\n"
+    content += "2. Open Gmail → Compose → Click Sincerely icon\n"
+    content += "3. Create new template → paste Subject and Body\n"
+    content += "4. Always replace [FIRSTNAME] before sending\n"
+    content += "5. Send ONE at a time. Review every message before hitting send.\n\n---\n\n"
+    content += "\n\n---\n\n".join(templates)
+
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return path
