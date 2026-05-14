@@ -347,6 +347,16 @@ def cmd_apply_workflow(job):
     else:
         console.print("[yellow]Google Sheets not configured. Run 'python main.py sheets_setup' to see instructions.[/]")
     
+    # Manual Application Step
+    import webbrowser
+    console.print("\n[bold yellow]Ready to apply manually.[/]")
+    console.print(f"Job URL: [blue underline]{job['url']}[/]")
+
+    if Confirm.ask("Open job posting in browser now?"):
+        webbrowser.open(job["url"])
+        console.print("[green]✓ Opened in browser. Apply using your tailored PDF from output/[/]")
+        console.print(f"[dim]PDF location: {pdf_path}[/]")
+
     summary_text = f"""
 ✓ Resume tailored for [bold]{role}[/] at [bold]{company}[/]
 ✓ PDF: [cyan]{pdf_path if pdf_path else 'Skipped'}[/]
