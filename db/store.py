@@ -33,6 +33,9 @@ def init_db():
         columns = [row[1] for row in cursor.fetchall()]
         if "department" not in columns:
             conn.execute("ALTER TABLE jobs ADD COLUMN department TEXT")
+        
+        if "score_json" not in columns:
+            conn.execute("ALTER TABLE jobs ADD COLUMN score_json TEXT")
             
         conn.commit()
 
@@ -118,10 +121,25 @@ def update_status(job_id: str, status: str):
 
 def update_score(job_id: str, score: float):
     """
-    Updates the score for a specific job.
+    Updates the numerical score for a specific job.
     """
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("UPDATE jobs SET score = ? WHERE id = ?", (score, job_id))
+        conn.commit()
+
+def update_score_result(job_id: str, result: dict):
+    """
+    Updates both the numerical score and the full JSON result for a job.
+    """
+    import json
+    score = result.get("score", 0)
+    score_json = json.dumps(result)
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "UPDATE jobs SET score = ?, score_json = ? WHERE id = ?", 
+            (score, score_json, job_id)
+        )
         conn.commit()
 
 def job_exists(job_id: str) -> bool:
@@ -151,6 +169,17 @@ def get_jobs_by_status(status: str) -> List[dict]:
         conn.row_factory = sqlite3.Row
         cursor = conn.execute(
             "SELECT * FROM jobs WHERE status = ? ORDER BY created_at DESC", (status,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
+def get_jobs_by_score(min_score: float) -> List[dict]:
+    """
+    Returns all jobs with a score >= min_score, ordered by score DESC.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute(
+            "SELECT * FROM jobs WHERE score >= ? ORDER BY score DESC", (min_score,)
         )
         return [dict(row) for row in cursor.fetchall()]
 
