@@ -8,6 +8,7 @@ from rich.prompt import Confirm, Prompt
 from rich.panel import Panel
 from rich.text import Text
 from rich.progress import Progress
+from rich.prompt import Prompt, Confirm
 
 # Project Imports
 from scanner import scan_all
@@ -17,7 +18,8 @@ from pdf.generator import generate_pdf
 from tracker.sheets import log_application, is_sheets_configured
 from db.store import (
     init_db, save_jobs, get_new_jobs, update_status, 
-    update_score, get_unscored_jobs, get_jobs_by_status, get_all_jobs
+    update_score, update_score_result, get_unscored_jobs, get_jobs_by_status, get_all_jobs,
+    get_jobs_by_score
 )
 from config import MIN_SCORE_TO_SHOW, validate_config, get_department_keywords, DEPARTMENTS
 from scorer.research import run_outreach_research, save_outreach_report
@@ -98,9 +100,7 @@ def cmd_scan():
             progress.update(task, description=f"[cyan]Scoring: [bold]{title}[/] at {company}")
             
             result = score_job(desc)
-            score = result.get("score", 0)
-            
-            update_score(job["id"], score)
+            update_score_result(job["id"], result)
             progress.advance(task)
             
             # Simple rate limit to stay within Gemini free tier quotas
@@ -135,6 +135,7 @@ def cmd_review(department=None):
         table = Table(title=title, box=None, header_style="bold blue")
         table.add_column("#", justify="right", style="cyan")
         table.add_column("Match", justify="center")
+        table.add_column("Grade", justify="center")
         table.add_column("Company", style="bold")
         table.add_column("Role", style="white")
         table.add_column("Portal", style="dim")
@@ -143,9 +144,21 @@ def cmd_review(department=None):
             score = job.get("score", 0)
             score_style = "green" if score >= 8 else "yellow" if score >= 6 else "red"
             
+            # Extract grade from score_json if available
+            grade = "N/A"
+            if job.get("score_json"):
+                try:
+                    import json
+                    analysis = json.loads(job["score_json"])
+                    grade = analysis.get("grade", "N/A")
+                except: pass
+            
+            grade_style = "bold green" if grade == "A" else "green" if grade == "B" else "yellow" if grade == "C" else "red"
+
             table.add_row(
                 str(i),
                 f"[{score_style}]{score*10:.0f}%[/]",
+                f"[{grade_style}]{grade}[/]",
                 job["company"],
                 job["title"],
                 job["portal"]
@@ -171,18 +184,36 @@ def cmd_review(department=None):
         
         # Display Analysis
         console.print(f"\n[bold blue]Deep Analysis: {selected_job['title']} at {selected_job['company']}...[/]")
-        analysis = score_job(selected_job["description"])
+        
+        # Use existing analysis if available
+        analysis = None
+        if selected_job.get("score_json"):
+            try:
+                import json
+                analysis = json.loads(selected_job["score_json"])
+            except: pass
+        
+        if not analysis:
+            analysis = score_job(selected_job["description"])
+            update_score_result(selected_job["id"], analysis)
         
         # UI for analysis results
         analysis_grid = Table.grid(expand=True)
-        analysis_grid.add_column(style="bold cyan", width=15)
+        analysis_grid.add_column(style="bold cyan", width=18)
         analysis_grid.add_column()
 
         score = analysis.get('score', 0)
+        grade = analysis.get('grade', 'N/A')
         score_color = "green" if score >= 8 else "yellow" if score >= 6 else "red"
+        grade_color = "bold green" if grade == "A" else "green" if grade == "B" else "yellow" if grade == "C" else "red"
         
-        analysis_grid.add_row("Match Score", f"[{score_color}]{score}/10[/]")
+        analysis_grid.add_row("Match Score", f"[{score_color}]{score}/10[/] ([{grade_color}]{grade}[/])")
         analysis_grid.add_row("Verdict", f"[italic]{analysis.get('verdict', 'N/A')}[/]")
+        analysis_grid.add_row("Top Project", f"[bold magenta]{analysis.get('top_project', 'N/A')}[/]")
+        
+        effort = analysis.get('effort_to_apply', 'medium')
+        effort_color = "green" if effort == "low" else "yellow" if effort == "medium" else "red"
+        analysis_grid.add_row("Effort to Apply", f"[{effort_color}]{effort.upper()}[/]")
         
         reasons_text = Text()
         for r in analysis.get('match_reasons', []):
@@ -239,6 +270,136 @@ def cmd_review(department=None):
             else:
                 console.print("[bold red]Error:[/] PDF generation failed.")
         elif action == "3" or action == "q":
+            continue
+def cmd_apply_workflow(job):
+    """
+    Placeholder for the full application workflow (Phase 3).
+    Includes resume tailoring and outreach automation.
+    """
+    console.print(f"\n[bold green]Starting Application Workflow for {job['title']}...[/]")
+    console.print("[yellow]Phase 3 Implementation: Resume Tailoring & Outreach is next![/]")
+    Confirm.ask("Press Enter to continue...")
+
+def cmd_pipeline():
+    """
+    Shows all scored jobs ranked by score.
+    """
+    import json
+    min_score = float(sys.argv[2]) if len(sys.argv) > 2 else MIN_SCORE_TO_SHOW
+    
+    while True:
+        jobs = get_jobs_by_score(min_score)
+        
+        if not jobs:
+            console.print(f"\n[bold yellow]No jobs found with score >= {min_score}.[/]")
+            console.print("Try running [cyan]'python main.py scan'[/] to find and score more roles.")
+            return
+
+        table = Table(title=f"Ranked Job Pipeline (Score >= {min_score})", box=None, header_style="bold blue")
+        table.add_column("#", justify="right", style="cyan")
+        table.add_column("Grade", justify="center")
+        table.add_column("Score", justify="center")
+        table.add_column("Company", style="bold")
+        table.add_column("Role", style="white")
+        table.add_column("Location", style="dim")
+        table.add_column("Effort", justify="center")
+        table.add_column("Rec.", justify="center")
+
+        rec_count = 0
+        total_score = 0
+        
+        for i, job in enumerate(jobs, 1):
+            analysis = {}
+            if job.get("score_json"):
+                try: analysis = json.loads(job["score_json"])
+                except: pass
+            
+            grade = analysis.get("grade", "N/A")
+            score = job.get("score", 0)
+            total_score += score
+            
+            effort = analysis.get("effort_to_apply", "medium")
+            rec = "✓" if analysis.get("recommend_apply") else "✗"
+            if analysis.get("recommend_apply"): rec_count += 1
+            
+            # Row coloring based on grade
+            row_style = "green" if grade == "A" else "bright_green" if grade == "B" else "yellow" if grade == "C" else "red" if grade == "D" else "dim"
+            
+            table.add_row(
+                str(i),
+                grade,
+                f"{score}/10",
+                job["company"],
+                job["title"],
+                (job["location"] or "Remote")[:20],
+                effort.upper(),
+                rec,
+                style=row_style
+            )
+
+        console.print(table)
+        
+        avg = total_score / len(jobs) if jobs else 0
+        console.print(f"\n[dim]Showing {len(jobs)} jobs | Avg score: {avg:.1f} | Recommended: {rec_count}[/]")
+        
+        choice = Prompt.ask("\nEnter [bold]job #[/] for full details, or [bold]q[/] to quit", default="q")
+        
+        if choice.lower() == 'q':
+            break
+            
+        try:
+            idx = int(choice) - 1
+            if not (0 <= idx < len(jobs)):
+                raise ValueError
+            
+            selected = jobs[idx]
+            analysis = json.loads(selected["score_json"]) if selected.get("score_json") else {}
+            
+            # Detailed Panel
+            detail_grid = Table.grid(expand=True)
+            detail_grid.add_column(style="bold cyan", width=20)
+            detail_grid.add_column()
+            
+            detail_grid.add_row("Verdict", f"[italic]{analysis.get('verdict', 'N/A')}[/]")
+            
+            reasons = analysis.get("match_reasons", [])
+            reasons_text = Text()
+            for r in reasons: reasons_text.append(f"✓ {r}\n", style="green")
+            detail_grid.add_row("Why you match", reasons_text)
+            
+            gaps = analysis.get("gaps", [])
+            gaps_text = Text()
+            for g in gaps: gaps_text.append(f"✗ {g}\n", style="red")
+            detail_grid.add_row("Gaps", gaps_text)
+            
+            detail_grid.add_row("Best Project", f"[bold magenta]{analysis.get('top_project', 'N/A')}[/]")
+            detail_grid.add_row("URL", f"[link={selected['url']}]{selected['url']}[/link]")
+            
+            console.print(Panel(
+                detail_grid, 
+                title=f" {selected['title']} at {selected['company']} — Grade {analysis.get('grade')} ({selected['score']}/10) ",
+                border_style="blue"
+            ))
+            
+            # Action Menu
+            action = Prompt.ask(
+                "\n[bold]Actions[/]: [1] Apply [2] Skip [3] Archive [4] Back",
+                choices=["1", "2", "3", "4"],
+                default="4"
+            )
+            
+            if action == "1":
+                cmd_apply_workflow(selected)
+            elif action == "2":
+                update_status(selected["id"], "skipped")
+                console.print("[yellow]Job skipped.[/]")
+            elif action == "3":
+                update_status(selected["id"], "archived")
+                console.print("[dim]Job archived.[/]")
+            # action 4 just loops back
+            
+        except ValueError:
+            console.print("[red]Invalid selection.[/]")
             continue
 
 def cmd_status():
@@ -333,6 +494,7 @@ def main():
             "  [bold green]scan [dept][/]      Scan jobs by department (default: engineering)\n"
             "  Available: engineering, data, product, design, sales, marketing\n"
             "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
+            "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
             "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
             "  [bold green]status[/]            Show application pipeline statistics"
         )
@@ -347,6 +509,8 @@ def main():
         elif command == "review":
             department = sys.argv[2].lower() if len(sys.argv) > 2 else None
             cmd_review(department=department)
+        elif command == "pipeline":
+            cmd_pipeline()
         elif command == "status":
             cmd_status()
         elif command == "outreach_research":

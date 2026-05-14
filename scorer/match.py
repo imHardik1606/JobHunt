@@ -31,13 +31,31 @@ def score_job(job_description: str) -> dict:
     Implements 3x retry and regex fallback for JSON extraction.
     """
     if not client:
-        return {"score": 0, "gaps": ["API Client not initialized"], "recommend_apply": False}
+        return {
+            "score": 0, 
+            "grade": "F",
+            "verdict": "API Client not initialized",
+            "match_reasons": [],
+            "gaps": ["Gemini API key missing or client failure"],
+            "top_project": "N/A",
+            "recommend_apply": False,
+            "effort_to_apply": "high"
+        }
 
     cv_text = ""
     try:
         cv_text = load_cv()
     except Exception as e:
-        return {"score": 0, "gaps": [f"CV Load failed: {e}"], "recommend_apply": False}
+        return {
+            "score": 0, 
+            "grade": "F",
+            "verdict": "CV Load failed",
+            "match_reasons": [],
+            "gaps": [f"Could not read cv.md: {e}"],
+            "top_project": "N/A",
+            "recommend_apply": False,
+            "effort_to_apply": "high"
+        }
 
     jd_truncated = job_description[:3000]
     
@@ -57,14 +75,27 @@ EVALUATION RULES:
 Return ONLY valid JSON with no markdown formatting, no explanation, no code blocks.
 Use exactly this structure:
 {{
-  "score": <number 0.0 to 10.0>,
-  "match_reasons": ["reason1", "reason2", "reason3"],
-  "gaps": ["gap1", "gap2"],
-  "verdict": "one sentence summary of fit",
-  "recommend_apply": <true or false>
+  "score": <float 0.0-10.0>,
+  "grade": <"A"|"B"|"C"|"D"|"F">,
+  "verdict": "<one sentence>",
+  "match_reasons": ["<specific reason 1>", "<specific reason 2>", "<specific reason 3>"],
+  "gaps": ["<specific gap 1>", "<specific gap 2>"],
+  "top_project": "<which of candidate's projects is most relevant to this JD>",
+  "recommend_apply": <true|false>,
+  "effort_to_apply": <"low"|"medium"|"high">
 }}
 
-Score guide: 8-10 strong match, 6-7 good match, 4-5 partial, 0-3 skip."""
+GRADE MAPPING:
+A = 8-10 (strong match, apply immediately)
+B = 6-7  (good match, minor gaps)
+C = 5    (borderline, evaluate carefully)
+D = 3-4  (significant gaps)
+F = 0-2  (not a fit)
+
+EFFORT TO APPLY:
+low = resume needs minor tweaks
+medium = resume needs significant tailoring
+high = major gaps, would need preparation"""
 
     last_error = ""
     last_raw_response = ""
@@ -124,10 +155,13 @@ Score guide: 8-10 strong match, 6-7 good match, 4-5 partial, 0-3 skip."""
     
     return {
         "score": 0,
-        "match_reasons": [],
-        "gaps": [f"Scoring failed after 3 attempts: {last_error}"],
+        "grade": "F",
         "verdict": "Could not evaluate",
-        "recommend_apply": False
+        "match_reasons": [],
+        "gaps": [f"Scoring failed after multiple attempts: {last_error}"],
+        "top_project": "N/A",
+        "recommend_apply": False,
+        "effort_to_apply": "high"
     }
 
 def batch_score_jobs(jobs: list[dict]) -> list[dict]:
