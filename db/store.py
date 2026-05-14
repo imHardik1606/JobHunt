@@ -183,6 +183,16 @@ def get_jobs_by_score(min_score: float) -> List[dict]:
         )
         return [dict(row) for row in cursor.fetchall()]
 
+def get_job_by_id(job_id: str) -> Union[dict, None]:
+    """
+    Returns a single job dictionary by its ID, or None if not found.
+    """
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.execute("SELECT * FROM jobs WHERE id = ? LIMIT 1", (job_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
 if __name__ == "__main__":
     # Internal test
     init_db()
