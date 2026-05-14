@@ -14,7 +14,7 @@ from scanner import scan_all
 from scorer.match import score_job
 from tailor.resume import tailor_resume, save_tailored_cv
 from pdf.generator import generate_pdf
-from tracker.sheets import log_application, is_sheets_configured
+from tracker.sheets import log_application, is_configured, print_setup_instructions
 from db.store import (
     init_db, save_jobs, get_new_jobs, update_status, 
     update_score, update_score_result, get_unscored_jobs, get_jobs_by_status, get_all_jobs,
@@ -260,7 +260,7 @@ def cmd_review(department=None):
                 except: pass
 
                 # Logging
-                if is_sheets_configured():
+                if is_configured():
                     if Confirm.ask("Log this application to Google Sheets?", default=True):
                         log_application(selected_job, analysis, pdf_path)
                 
@@ -277,6 +277,9 @@ def cmd_apply_workflow(job):
     role = job["title"]
     company = job["company"]
     job_id = job["id"]
+    pdf_path = ""
+    report_path = ""
+    sincerely_path = ""
 
     # STEP 1: Tailor Resume
     console.print("\n[bold]STEP 1/3: Tailoring Resume[/]")
@@ -297,7 +300,6 @@ def cmd_apply_workflow(job):
 
     # STEP 2: Generate PDF
     console.print("\n[bold]STEP 2/3: Generating PDF (Jake's Resume Style)[/]")
-    pdf_path = None
     if Confirm.ask(f"Generate Jake's Resume PDF for {company}?"):
         from pdf.jake_template import generate_jake_pdf
         pdf_path = generate_jake_pdf(tailored_md, company, role)
@@ -313,7 +315,6 @@ def cmd_apply_workflow(job):
 
     # STEP 3: Outreach Research
     console.print("\n[bold]STEP 3/3: Outreach Research[/]")
-    report_path = None
     if Confirm.ask(f"Run outreach research for {company}?"):
         from scorer.research import run_outreach_research, save_outreach_report
         from rich.markdown import Markdown
@@ -337,8 +338,14 @@ def cmd_apply_workflow(job):
     import json
     score_result = json.loads(job["score_json"]) if job.get("score_json") else {"score": job.get("score", 0)}
     
-    if is_sheets_configured():
-        log_application(job, score_result, pdf_path)
+    if is_configured():
+        success = log_application(job, score_result, pdf_path)
+        if success:
+            console.print("[green]✓ Logged to Google Sheets[/]")
+        else:
+            console.print("[yellow]⚠ Google Sheets logging failed — check your sheet permissions[/]")
+    else:
+        console.print("[yellow]Google Sheets not configured. Run 'python main.py sheets_setup' to see instructions.[/]")
     
     summary_text = f"""
 ✓ Resume tailored for [bold]{role}[/] at [bold]{company}[/]
@@ -589,6 +596,7 @@ def main():
             "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
             "  [bold green]apply {id}[/]       Run full apply workflow for a specific job\n"
             "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
+            "  [bold green]sheets_setup[/]      Show Google Sheets setup instructions\n"
             "  [bold green]status[/]            Show application pipeline statistics"
         )
         console.print(Panel(help_text, title="JobHunt CLI", expand=False))
@@ -608,6 +616,8 @@ def main():
             cmd_apply()
         elif command == "status":
             cmd_status()
+        elif command == "sheets_setup":
+            print_setup_instructions()
         elif command == "outreach_research":
             cmd_outreach_research()
         else:
