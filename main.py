@@ -20,6 +20,7 @@ from db.store import (
     update_score, get_unscored_jobs, get_jobs_by_status, get_all_jobs
 )
 from config import MIN_SCORE_TO_SHOW, validate_config
+from scorer.research import run_outreach_research, save_outreach_report
 
 console = Console()
 
@@ -251,6 +252,33 @@ def cmd_status():
     else:
         console.print("No applications logged yet.")
 
+def cmd_outreach(company: str, role: str):
+    """
+    Generates a deep outreach research package for a specific company and role.
+    """
+    console.print(Panel(f"[bold magenta]Starting Outreach Research Assistant Mode[/]\n[cyan]Target:[/] {role} at {company}", expand=False))
+    
+    with Progress() as progress:
+        task = progress.add_task("[magenta]Researching with Gemini...", total=None)
+        report_content = run_outreach_research(company, role)
+    
+    if "failed" in report_content.lower() or "error" in report_content.lower():
+        console.print(f"\n[bold red]Error:[/] {report_content}")
+        return
+
+    # Display a preview of the research
+    console.print(Panel(report_content[:500] + "...", title="Research Preview", border_style="magenta"))
+    
+    # Save to report
+    report_path = save_outreach_report(report_content, company, role)
+    if report_path:
+        console.print(f"\n[bold green]Success![/] Outreach package saved to: [underline cyan]{report_path}[/]")
+        
+        if Confirm.ask("Open the report now?", default=True):
+            webbrowser.open(os.path.abspath(report_path))
+    else:
+        console.print("[bold red]Error saving report.[/]")
+
 def main():
     # Database always initialized
     init_db()
@@ -273,9 +301,10 @@ def main():
             f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
             "Usage: [bold cyan]python main.py <command>[/]\n\n"
             "Commands:\n"
-            "  [bold green]scan[/]    Fetch new jobs and score them with AI\n"
-            "  [bold green]review[/]  Browse high-scoring jobs and generate resumes\n"
-            "  [bold green]status[/]  Show application pipeline statistics"
+            "  [bold green]scan[/]              Fetch new jobs and score them with AI\n"
+            "  [bold green]review[/]            Browse high-scoring jobs and generate resumes\n"
+            "  [bold green]outreach_research[/]  Generate 5-section outreach package for a target role\n"
+            "  [bold green]status[/]            Show application pipeline statistics"
         )
         console.print(Panel(help_text, title="JobHunt CLI", expand=False))
         return
@@ -289,6 +318,11 @@ def main():
             cmd_review()
         elif command == "status":
             cmd_status()
+        elif command == "outreach_research":
+            if len(sys.argv) < 4:
+                console.print("[bold red]Usage:[/] python main.py outreach_research \"Company\" \"Role\"")
+            else:
+                cmd_outreach(sys.argv[2], sys.argv[3])
         else:
             console.print(f"[red]Unknown command: {command}[/]")
     except KeyboardInterrupt:
