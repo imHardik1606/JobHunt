@@ -4,7 +4,6 @@ import webbrowser
 import time
 from rich.console import Console
 from rich.table import Table
-from rich.prompt import Confirm, Prompt
 from rich.panel import Panel
 from rich.text import Text
 from rich.progress import Progress
@@ -19,7 +18,7 @@ from tracker.sheets import log_application, is_sheets_configured
 from db.store import (
     init_db, save_jobs, get_new_jobs, update_status, 
     update_score, update_score_result, get_unscored_jobs, get_jobs_by_status, get_all_jobs,
-    get_jobs_by_score
+    get_jobs_by_score, get_job_by_id
 )
 from config import MIN_SCORE_TO_SHOW, validate_config, get_department_keywords, DEPARTMENTS
 from scorer.research import run_outreach_research, save_outreach_report
@@ -273,12 +272,99 @@ def cmd_review(department=None):
             continue
 def cmd_apply_workflow(job):
     """
-    Placeholder for the full application workflow (Phase 3).
-    Includes resume tailoring and outreach automation.
+    Executes the full application workflow: Tailoring, PDF generation, and Outreach.
     """
-    console.print(f"\n[bold green]Starting Application Workflow for {job['title']}...[/]")
-    console.print("[yellow]Phase 3 Implementation: Resume Tailoring & Outreach is next![/]")
-    Confirm.ask("Press Enter to continue...")
+    role = job["title"]
+    company = job["company"]
+    job_id = job["id"]
+
+    # STEP 1: Tailor Resume
+    console.print("\n[bold]STEP 1/3: Tailoring Resume[/]")
+    console.print(f"Tailoring your CV for [bold]{role}[/] at [bold]{company}[/]...")
+    
+    with console.status("[bold blue]Gemini is rewriting your resume...[/]"):
+        tailored_md = tailor_resume(job["description"], company, role)
+    
+    if not tailored_md:
+        console.print("[red]❌ Resume tailoring failed.[/]")
+        return
+
+    console.print("[green]✓ Resume tailored[/]")
+    if Confirm.ask("Preview tailored resume?"):
+        from rich.markdown import Markdown
+        preview_text = tailored_md[:1500] + "\n\n... (content truncated) ..."
+        console.print(Panel(Markdown(preview_text), title="Resume Preview"))
+
+    # STEP 2: Generate PDF
+    console.print("\n[bold]STEP 2/3: Generating PDF (Jake's Resume Style)[/]")
+    pdf_path = None
+    if Confirm.ask(f"Generate Jake's Resume PDF for {company}?"):
+        from pdf.jake_template import generate_jake_pdf
+        pdf_path = generate_jake_pdf(tailored_md, company, role)
+        if pdf_path:
+            console.print(f"[green]✓ PDF ready: {pdf_path}[/]")
+            # Open the output folder
+            import platform
+            try:
+                if platform.system() == "Darwin": os.system(f"open output/")
+                elif platform.system() == "Linux": os.system(f"xdg-open output/")
+                else: os.system(f"explorer output\\")
+            except: pass
+
+    # STEP 3: Outreach Research
+    console.print("\n[bold]STEP 3/3: Outreach Research[/]")
+    report_path = None
+    if Confirm.ask(f"Run outreach research for {company}?"):
+        from scorer.research import run_outreach_research, save_outreach_report
+        from rich.markdown import Markdown
+        with console.status("[bold blue]Generating outreach package...[/]"):
+            outreach = run_outreach_research(company, role)
+        
+        if outreach:
+            console.print(Panel(Markdown(outreach), title=f"Outreach Guide: {company}"))
+            report_path = save_outreach_report(outreach, company, role)
+            console.print(f"[green]✓ Outreach research saved: {report_path}[/]")
+
+    # STEP 4: Log everything
+    update_status(job_id, "applied")
+    
+    # Get score result for logging
+    import json
+    score_result = json.loads(job["score_json"]) if job.get("score_json") else {"score": job.get("score", 0)}
+    
+    if is_sheets_configured():
+        log_application(job, score_result, pdf_path)
+    
+    summary_text = f"""
+✓ Resume tailored for [bold]{role}[/] at [bold]{company}[/]
+✓ PDF: [cyan]{pdf_path if pdf_path else 'Skipped'}[/]
+✓ Outreach research: [cyan]{report_path if report_path else 'Skipped'}[/]
+
+[bold cyan]Next steps:[/]
+1. Review the PDF in the [bold]output/[/] folder
+2. Apply at: [link={job['url']}]{job['url']}[/link]
+3. Find contacts using the LinkedIn search strings in the outreach report
+4. Send messages ONE AT A TIME after personalizing [FIRSTNAME]
+"""
+    console.print(Panel(summary_text, title="Application Package Ready", border_style="green"))
+
+def cmd_apply():
+    """
+    CLI wrapper for cmd_apply_workflow.
+    Usage: python main.py apply {job_id}
+    """
+    if len(sys.argv) < 3:
+        console.print("[red]Usage: python main.py apply {job_id}[/]")
+        return
+    
+    job_id = sys.argv[2]
+    job = get_job_by_id(job_id)
+    
+    if not job:
+        console.print(f"[red]Error: Job with ID '{job_id}' not found in database.[/]")
+        return
+    
+    cmd_apply_workflow(job)
 
 def cmd_pipeline():
     """
@@ -495,6 +581,7 @@ def main():
             "  Available: engineering, data, product, design, sales, marketing\n"
             "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
             "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
+            "  [bold green]apply {id}[/]       Run full apply workflow for a specific job\n"
             "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
             "  [bold green]status[/]            Show application pipeline statistics"
         )
@@ -511,6 +598,8 @@ def main():
             cmd_review(department=department)
         elif command == "pipeline":
             cmd_pipeline()
+        elif command == "apply":
+            cmd_apply()
         elif command == "status":
             cmd_status()
         elif command == "outreach_research":

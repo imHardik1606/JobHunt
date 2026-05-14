@@ -62,6 +62,20 @@ FORMATTING:
 - Use ### **Name** | [Details] | [Location] | [Dates] for all items in Education/Experience/Projects.
 - Use bullet points for all details.
 
+HUMANIZATION RULES:
+- Vary sentence structure. Not every bullet starts with "Designed", "Built", "Implemented".
+  Use: developed, shipped, debugged, refactored, owned, led, reduced, improved, cut, enabled
+- Avoid buzzword stacking. "Leveraged cutting-edge scalable microservices" → never write this.
+- Use specific numbers where they exist in the original CV. Do not invent numbers.
+- Write bullets as outcomes, not task descriptions.
+  Bad: "Implemented caching layer using Redis"
+  Good: "Cut API response time by ~60% by adding Redis caching to hot query paths"
+- One bullet = one idea. No compound bullets joined by semicolons.
+- Max 2 bullets per project that start with the same verb.
+- The summary paragraph (if any) should sound like the candidate wrote it themselves, not like a recruiter wrote it. First person implied, not stated.
+- Do not use: "leverage", "spearhead", "synergy", "cutting-edge", "passionate about", "results-driven", "detail-oriented", "fast-paced environment"
+- Do use: plain language, concrete actions, real outcomes
+
 TARGET COMPANY: {company}
 TARGET ROLE: {role}
 
@@ -71,7 +85,13 @@ JOB DESCRIPTION:
 ORIGINAL CV:
 {base_cv}
 
-Return the complete tailored CV in Markdown format. Ensure it feels premium and targeted."""
+Return the complete tailored CV in Markdown format. Ensure it feels premium and targeted.
+
+SELF-CHECK:
+Review your output. If any bullet starts with 'Leveraged', rewrite it.
+If two consecutive bullets have the same opening verb, rewrite one.
+If the summary contains 'passionate', rewrite it.
+"""
 
         response = client.models.generate_content(
             model=MODEL_NAME,
