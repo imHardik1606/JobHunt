@@ -123,19 +123,19 @@ def validate_config() -> bool:
     """
     # Check Gemini API Key
     if not GEMINI_API_KEY:
-        print("❌ Error: GEMINI_API_KEY is missing in your .env file.")
-        print("💡 Setup: Go to https://aistudio.google.com/ to get a free API key.")
+        print("[ERROR] GEMINI_API_KEY is missing in your .env file.")
+        print("Setup: Go to https://aistudio.google.com/ to get a free API key.")
         return False
 
     # Check CV file existence
     if not os.path.exists(CV_PATH):
-        print(f"❌ Error: {CV_PATH} not found.")
-        print("💡 Setup: Create a file named 'cv.md' in the project root and paste your CV in markdown format.")
+        print(f"[ERROR] {CV_PATH} not found.")
+        print("Setup: Create a file named 'cv.md' in the project root and paste your CV in markdown format.")
         return False
 
     # Warn if Google Sheets ID is missing
     if not GOOGLE_SHEETS_ID:
-        print("⚠️  Warning: GOOGLE_SHEETS_ID is not set. Tracking to Google Sheets will be disabled.")
+        print("[WARNING] GOOGLE_SHEETS_ID is not set. Tracking to Google Sheets will be disabled.")
 
     return True
 

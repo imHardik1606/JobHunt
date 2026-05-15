@@ -79,7 +79,7 @@ def _get_applications_sheet():
             
         return worksheet
     except Exception as e:
-        print(f"❌ Google Sheets Connection Error: {e}")
+        print(f"[ERROR] Google Sheets Connection Error: {e}")
         return None
 
 def log_application(job: dict, score_result: dict, pdf_path: str = "") -> bool:
@@ -162,7 +162,7 @@ def log_application(job: dict, score_result: dict, pdf_path: str = "") -> bool:
         return True
         
     except Exception as e:
-        print(f"❌ Error logging to Google Sheets: {e}")
+        print(f"[ERROR] Error logging to Google Sheets: {e}")
         return False
 
 def print_setup_instructions():
@@ -171,12 +171,12 @@ def print_setup_instructions():
     """
     print("\n--- Google Sheets Setup Instructions ---")
     print("1. Go to console.cloud.google.com")
-    print("2. Create project → Enable Google Sheets API + Google Drive API")
-    print("3. Credentials → Service Account → Create → Download JSON key")
+    print("2. Create project -> Enable Google Sheets API + Google Drive API")
+    print("3. Credentials -> Service Account -> Create -> Download JSON key")
     print("4. Rename downloaded file to service_account.json, place in project root")
-    print("5. Create a Google Sheet → copy the ID from the URL (between /d/ and /edit)")
+    print("5. Create a Google Sheet -> copy the ID from the URL (between /d/ and /edit)")
     print("6. Add GOOGLE_SHEETS_ID=your_id to .env")
-    print("7. Open the sheet → Share with the service account email (Editor access)")
+    print("7. Open the sheet -> Share with the service account email (Editor access)")
     print("   The email looks like: name@project-id.iam.gserviceaccount.com\n")
 
 def update_application_status(company: str, role: str, new_status: str):
@@ -207,19 +207,19 @@ def update_application_status(company: str, role: str, new_status: str):
                     "horizontalAlignment": "CENTER"
                 })
                 
-                print(f"✅ Updated {company} - {role} status to: {new_status}")
+                print(f"[SUCCESS] Updated {company} - {role} status to: {new_status}")
                 return
         
     except Exception as e:
-        print(f"❌ Error updating status: {e}")
+        print(f"[ERROR] Error updating status: {e}")
 
 if __name__ == "__main__":
     if not is_configured():
         print_setup_instructions()
     else:
-        print("✅ Google Sheets appears to be configured correctly.")
+        print("[SUCCESS] Google Sheets appears to be configured correctly.")
         ws = _get_applications_sheet()
         if ws:
-            print(f"✅ Successfully connected to sheet: {ws.spreadsheet.title}")
+            print(f"[SUCCESS] Successfully connected to sheet: {ws.spreadsheet.title}")
         else:
-            print("❌ Configuration exists but connection failed.")
+            print("[ERROR] Configuration exists but connection failed.")

@@ -82,17 +82,17 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
         
         fetcher = PORTAL_FETCHERS.get(portal)
         if not fetcher:
-            print(f"⚠️  Skip: Unknown portal '{portal}' for {name}")
+            print(f"[WARNING] Skip: Unknown portal '{portal}' for {name}")
             continue
             
         print(f"Scanning {name} ({portal})...")
         try:
             jobs = fetcher(name, company_id)
             if not jobs:
-                print(f"⚠️  Warning: {name} ({portal}) returned 0 jobs.")
+                print(f"[WARNING] {name} ({portal}) returned 0 jobs.")
                 continue
         except Exception as e:
-            print(f"❌ Error: Failed to fetch from {name} ({portal}): {e}")
+            print(f"[ERROR] Failed to fetch from {name} ({portal}): {e}")
             continue
         
         relevant_count = 0
@@ -144,9 +144,9 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
                     job.department = department
                     all_relevant_jobs.append(job)
                     yc_relevant_count += 1
-            print(f"  → {yc_relevant_count} relevant YC listings found")
+            print(f"  -> {yc_relevant_count} relevant YC listings found")
         except Exception as e:
-            print(f"❌ Error: Failed to fetch from YC job board: {e}")
+            print(f"[ERROR] Failed to fetch from YC job board: {e}")
 
     # Optional: Scan Indian Portals (Instahyre)
     if include_indian_portals:
@@ -178,8 +178,8 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
                     job.department = department
                     all_relevant_jobs.append(job)
                     insta_relevant_count += 1
-            print(f"  → {insta_relevant_count} relevant Instahyre listings found")
+            print(f"  -> {insta_relevant_count} relevant Instahyre listings found")
         except Exception as e:
-            print(f"❌ Error: Failed to fetch from Instahyre: {e}")
+            print(f"[ERROR] Failed to fetch from Instahyre: {e}")
 
     return deduplicate_by_url(all_relevant_jobs)

@@ -117,25 +117,30 @@ def cmd_scan():
         console.print("[bold green]No relevant new jobs found for your keywords.[/]")
         return
         
-    console.print(f"[bold blue]Scoring {len(to_score)} relevant roles with Gemini...[/]")
+    console.print(f"\n[bold]Scoring {len(to_score)} jobs...[/]")
+
+    # Use the new parallel scoring pipeline with key rotation
+    from scorer.parallel import score_jobs_parallel, get_optimal_worker_count
+    from scorer.key_pool import KeyPool
+
+    try:
+        pool = KeyPool()
+        workers = get_optimal_worker_count(pool)
+        console.print(f"[dim]Using {workers} parallel workers across available API keys[/]")
+    except RuntimeError as e:
+        console.print(f"[red]{e}[/]")
+        return
+
+    # Run parallel scoring
+    summary = score_jobs_parallel(to_score, max_workers=workers)
+
+    # Print summary
+    console.print(f"\n[bold]Scoring complete:[/]")
+    console.print(f"  [green][SUCCESS] Scored: {summary['success']}/{summary['total']}[/]")
+    if summary['failed'] > 0:
+        console.print(f"  [red][FAILED] Failed: {summary['failed']}[/]")
+        console.print(f"  [dim]Failed jobs will be retried on next scan[/]")
     
-    with Progress() as progress:
-        task = progress.add_task("[cyan]Scoring jobs...", total=len(to_score))
-        
-        for job in to_score:
-            title = job["title"]
-            company = job["company"]
-            desc = job.get("description", "")
-            
-            progress.update(task, description=f"[cyan]Scoring: [bold]{title}[/] at {company}")
-            
-            result = score_job(desc)
-            update_score_result(job["id"], result)
-            progress.advance(task)
-            
-            # Simple rate limit to stay within Gemini free tier quotas
-            time.sleep(2)
-        
     console.print("\n[bold green]Scan complete![/] Run [cyan]'python main.py review'[/] to see high-potential leads.")
 
 def cmd_review(department=None):
@@ -296,7 +301,7 @@ def cmd_review(department=None):
                         log_application(selected_job, analysis, pdf_path)
                 
                 update_status(selected_job["id"], "applied")
-                console.print(f"✅ Marked as 'Applied' in local database.")
+                console.print(f"[SUCCESS] Marked as 'Applied' in local database.")
             else:
                 console.print("[bold red]Error:[/] PDF generation failed.")
         elif action == "3" or action == "q":
@@ -320,10 +325,10 @@ def cmd_apply_workflow(job):
         tailored_md = tailor_resume(job["description"], company, role)
     
     if not tailored_md:
-        console.print("[red]❌ Resume tailoring failed.[/]")
+        console.print("[red][ERROR] Resume tailoring failed.[/]")
         return
 
-    console.print("[green]✓ Resume tailored[/]")
+    console.print("[green](v) Resume tailored[/]")
     if Confirm.ask("Preview tailored resume?"):
         from rich.markdown import Markdown
         preview_text = tailored_md[:1500] + "\n\n... (content truncated) ..."
@@ -335,7 +340,7 @@ def cmd_apply_workflow(job):
         from pdf.jake_template import generate_jake_pdf
         pdf_path = generate_jake_pdf(tailored_md, company, role)
         if pdf_path:
-            console.print(f"[green]✓ PDF ready: {pdf_path}[/]")
+            console.print(f"[green](v) PDF ready: {pdf_path}[/]")
             # Open the output folder
             import platform
             try:
@@ -355,12 +360,12 @@ def cmd_apply_workflow(job):
         if outreach:
             console.print(Panel(Markdown(outreach), title=f"Outreach Guide: {company}"))
             report_path = save_outreach_report(outreach, company, role)
-            console.print(f"[green]✓ Outreach research saved: {report_path}[/]")
+            console.print(f"[green](v) Outreach research saved: {report_path}[/]")
             
             # New: Extract copy-paste ready templates for Sincerely extension
             from scorer.research import extract_sincerely_templates
             sincerely_path = extract_sincerely_templates(outreach, company, role)
-            console.print(f"[green]✓ Sincerely templates exported: {sincerely_path}[/]")
+            console.print(f"[green](v) Sincerely templates exported: {sincerely_path}[/]")
 
     # STEP 4: Log everything
     update_status(job_id, "applied")
@@ -372,9 +377,9 @@ def cmd_apply_workflow(job):
     if is_configured():
         success = log_application(job, score_result, pdf_path)
         if success:
-            console.print("[green]✓ Logged to Google Sheets[/]")
+            console.print("[green](v) Logged to Google Sheets[/]")
         else:
-            console.print("[yellow]⚠ Google Sheets logging failed — check your sheet permissions[/]")
+            console.print("[yellow][WARNING] Google Sheets logging failed - check your sheet permissions[/]")
     else:
         console.print("[yellow]Google Sheets not configured. Run 'python main.py sheets_setup' to see instructions.[/]")
     

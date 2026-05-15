@@ -37,6 +37,12 @@ def init_db():
         if "score_json" not in columns:
             conn.execute("ALTER TABLE jobs ADD COLUMN score_json TEXT")
             
+        if "grade" not in columns:
+            conn.execute("ALTER TABLE jobs ADD COLUMN grade TEXT")
+            
+        if "verdict" not in columns:
+            conn.execute("ALTER TABLE jobs ADD COLUMN verdict TEXT")
+            
         conn.commit()
 
 def save_jobs(jobs: List) -> int:
@@ -119,26 +125,31 @@ def update_status(job_id: str, status: str):
         conn.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
         conn.commit()
 
-def update_score(job_id: str, score: float):
+def update_score(job_id: str, score: float, grade: str = None, verdict: str = None):
     """
-    Updates the numerical score for a specific job.
+    Updates the numerical score, grade, and verdict for a specific job.
     """
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("UPDATE jobs SET score = ? WHERE id = ?", (score, job_id))
+        conn.execute(
+            "UPDATE jobs SET score = ?, grade = ?, verdict = ? WHERE id = ?", 
+            (score, grade, verdict, job_id)
+        )
         conn.commit()
 
 def update_score_result(job_id: str, result: dict):
     """
-    Updates both the numerical score and the full JSON result for a job.
+    Updates numerical score, grade, verdict, and the full JSON result for a job.
     """
     import json
     score = result.get("score", 0)
+    grade = result.get("grade")
+    verdict = result.get("verdict")
     score_json = json.dumps(result)
     
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
-            "UPDATE jobs SET score = ?, score_json = ? WHERE id = ?", 
-            (score, score_json, job_id)
+            "UPDATE jobs SET score = ?, grade = ?, verdict = ?, score_json = ? WHERE id = ?", 
+            (score, grade, verdict, score_json, job_id)
         )
         conn.commit()
 
