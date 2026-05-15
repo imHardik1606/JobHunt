@@ -126,3 +126,11 @@ Support portals: `greenhouse`, `lever`, `ashby`.
 
 > [!IMPORTANT]
 > The parallel scoring engine is extremely fast. Ensure you have enough API keys in `.env` to sustain high worker counts.
+
+## Project Summary
+JobHunt is a high-performance automation engine designed to eliminate the manual grind of job seeking. It doesn't just find jobs; it acts as a full-stack career assistant by:
+* Automated Discovery: Real-time scanning of YC (Work at a Startup), Instahyre, Greenhouse, Lever, and Ashby.
+* Deep AI Reasoning: Using a parallelized "KeyPool" (Gemini, Groq, OpenRouter) to grade your fit (A-F) against your Markdown CV.
+* Surgical Tailoring: Generating hyper-personalized, single-column LaTeX-style resumes (Jake's Template) via HTML/CSS & Playwright.
+* Outreach Intelligence: Identifying hiring managers and generating personalized LinkedIn/Email templates.
+* Centralized Tracking: Automatically logging every application to a color-coded Google Sheets dashboard.
