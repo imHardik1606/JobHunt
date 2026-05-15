@@ -6,11 +6,11 @@ JobHunt is a personal automation pipeline designed to eliminate the friction of 
 
 - **Department-Aware Scanning**: Target roles in `engineering`, `data`, `product`, `design`, `sales`, or `marketing`.
 - **Rich AI Scoring**: Every job gets a **Letter Grade (A-F)**, a numerical score, and a "Top Project" recommendation.
-- **Humanized Tailoring**: AI prompt engineering that eliminates "robotic" buzzwords and focuses on concrete outcomes.
+- **Master Application Workflow**: Tailor CV → Generate PDF → Find Outreach Targets → Log to Sheets → Open Browser.
 - **Jake's Resume PDF**: Generates professional, single-column LaTeX-style resumes (HTML/CSS → PDF via Playwright).
 - **Outreach Research**: Identifies specific hiring managers and writes personalized LinkedIn/Email messages.
 - **Sincerely Templates**: Automatically extracts copy-paste ready networking templates for your outreach.
-- **Centralized Tracking**: Local SQLite database for persistence + optional Google Sheets syncing.
+- **Visual Application Tracker**: Logs everything to a professional Google Sheet with color-coded status badges and grades.
 
 ## 📋 Requirements
 - **Python 3.10+**
@@ -34,16 +34,17 @@ playwright install chromium
 1. Create `cv.md` in the root and paste your full CV in Markdown.
 2. Copy `.env.example` to `.env` and add your `GEMINI_API_KEY`.
 3. Update `config.py` with the companies you want to monitor.
+4. Run `python main.py sheets_setup` for Google Sheets tracking instructions.
 
 ### 3. Run the Pipeline
 ```powershell
 # Scan for jobs (default: engineering)
 python main.py scan engineering
 
-# View your ranked matches
+# View your ranked matches and launch applications
 python main.py pipeline
 
-# Start the full application workflow for a specific job
+# Or apply directly to a specific job ID
 python main.py apply {job_id}
 ```
 
@@ -51,27 +52,26 @@ python main.py apply {job_id}
 
 | Command | Description |
 | :--- | :--- |
-| `python main.py scan [dept]` | Scans all configured companies for roles in the specified department. |
+| `python main.py scan [dept]` | Scans configured companies for roles in the specified department. |
 | `python main.py pipeline [score]` | Shows a ranked table of all scored jobs. Default shows 6+. |
-| `python main.py apply {id}` | **The Master Workflow**: Tailors CV → Generates PDF → Finds Outreach Targets. |
-| `python main.py review [dept]` | Interactive dashboard to deep-dive into job descriptions. |
+| `python main.py apply {id}` | **The Master Workflow**: Runs tailoring, PDF, outreach, and opens browser. |
+| `python main.py sheets_setup` | Shows step-by-step instructions for Google Sheets integration. |
 | `python main.py status` | Summary of your application pipeline (Pending, Applied, Skipped). |
 
 ## 🏗️ Architecture
 
 ### Scoring Engine
-JobHunt doesn't just look for keywords. It uses **Gemini 1.5 Flash** to perform a "Deep Match" analysis, returning:
+JobHunt uses **Gemini 1.5 Flash** to perform a "Deep Match" analysis, returning:
 - **Grade**: A (Immediate Apply) to F (Not a fit).
-- **Match Reasons**: 3 specific technical strengths.
-- **Gaps**: Skills or experience you're missing.
 - **Top Project**: Which project from your CV will impress *this* hiring manager most.
 - **Effort Rating**: How much tailoring is needed (Low/Medium/High).
 
-### Application Package
-When you run `apply`, JobHunt generates an `output/` folder containing:
-1. `Company_Role_tailored.md`: Your AI-optimized resume source.
-2. `Company_Role_Jake.pdf`: A premium, ready-to-send PDF.
-3. `sincerely_Company_Role.md`: Personalized outreach messages for 4-5 specific people at the company.
+### Visual Application Tracker
+When you run `apply`, JobHunt logs your progress to a Google Sheet with:
+- **Color-coded Status**: Applied (Blue), Interviewing (Orange), Offered (Green), Rejected (Red).
+- **Grade Heatmap**: Green (A) to Red (F).
+- **Score Indicators**: Visual bars based on match confidence.
+- **Local Links**: Direct path to your generated tailored resume.
 
 ## 🤝 Adding Companies
 To monitor a new company, add it to `COMPANIES` in `config.py`:
