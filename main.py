@@ -28,8 +28,21 @@ console = Console()
 def cmd_scan():
     """
     Scans portals for new jobs and scores them using AI.
+    Usage: python main.py scan [dept] [india|remote] [yc]
     """
-    department = sys.argv[2].lower() if len(sys.argv) > 2 else "engineering"
+    args = set(arg.lower() for arg in sys.argv[2:])
+    
+    # department = first arg that is NOT "india", "remote", "yc" — default "engineering"
+    department = "engineering"
+    for arg in sys.argv[2:]:
+        low_arg = arg.lower()
+        if low_arg not in ["india", "remote", "yc"]:
+            department = low_arg
+            break
+    
+    country = "india" if "india" in args else "remote" if "remote" in args else None
+    include_yc = "yc" in args
+    include_indian_portals = "india" in args
     
     try:
         # Validate department and get keywords to ensure it exists
@@ -38,9 +51,27 @@ def cmd_scan():
         console.print(f"[bold red]Error:[/] {e}")
         return
 
-    console.print(Panel(f"[bold blue]Scanning {department.upper()} jobs across all portals...[/]", expand=False))
+    header_msg = f"[bold blue]Scanning {department.upper()} jobs"
+    flags = []
+    if country:
+        flags.append(f"{country.upper()} filter ON")
+    if include_yc:
+        flags.append("YC companies INCLUDED")
+    if include_indian_portals:
+        flags.append("Indian portals (Instahyre) INCLUDED")
     
-    jobs = scan_all(department=department)
+    if flags:
+        header_msg += " | " + " | ".join(flags)
+    header_msg += " across all portals...[/]"
+    
+    console.print(Panel(header_msg, expand=False))
+    
+    jobs = scan_all(
+        department=department, 
+        country=country, 
+        include_yc=include_yc, 
+        include_indian_portals=include_indian_portals
+    )
     if not jobs:
         console.print("\n[bold red]No jobs found.[/]")
         console.print("TIP: Troubleshooting: Check your internet connection or verify that company IDs in [bold]config.py[/] are correct.")
@@ -600,8 +631,12 @@ def main():
             f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
             "Usage: [bold cyan]python main.py <command> [args][/]\n\n"
             "Commands:\n"
-            "  [bold green]scan [dept][/]      Scan jobs by department (default: engineering)\n"
-            "  Available: engineering, data, product, design, sales, marketing\n"
+            "  [bold green]scan [dept] [flags][/]  Scan jobs by department and flags (india, remote, yc)\n"
+            "  Examples:\n"
+            "    python main.py scan engineering yc        [dim](YC companies only)[/]\n"
+            "    python main.py scan engineering india yc  [dim](India + YC)[/]\n"
+            "    python main.py scan data remote           [dim](Data roles, remote only)[/]\n"
+            "  Available depts: engineering, data, product, design, sales, marketing\n"
             "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
             "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
             "  [bold green]apply {id}[/]       Run full apply workflow for a specific job\n"

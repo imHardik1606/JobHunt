@@ -32,6 +32,56 @@ COMPANIES = [
     {"name": "Vercel", "portal": "ashby", "id": "vercel"},
 ]
 
+# YC-specific companies (optionally merged via --yc flag)
+YC_COMPANIES = [
+    # Batch S24 / W24 — recent
+    {"name": "Firecrawl",       "portal": "greenhouse", "id": "firecrawl"},
+    {"name": "Browserbase",     "portal": "greenhouse", "id": "browserbase"},
+    {"name": "Groq",            "portal": "greenhouse", "id": "groq"},
+    {"name": "Together AI",     "portal": "greenhouse", "id": "togetherai"},
+    {"name": "Anyscale",        "portal": "greenhouse", "id": "anyscale"},
+    {"name": "Modal",           "portal": "lever",      "id": "modal-labs"},
+    {"name": "Replicate",       "portal": "lever",      "id": "replicate"},
+    {"name": "Weights & Biases","portal": "lever",      "id": "wandb"},
+
+    # Established YC alumni — actively hiring
+    {"name": "Stripe",          "portal": "greenhouse", "id": "stripe"},
+    {"name": "Airbnb",          "portal": "greenhouse", "id": "airbnb"},
+    {"name": "Dropbox",         "portal": "greenhouse", "id": "dropbox"},
+    {"name": "Gusto",           "portal": "greenhouse", "id": "gusto"},
+    {"name": "Rippling",        "portal": "greenhouse", "id": "rippling"},
+    {"name": "Brex",            "portal": "greenhouse", "id": "brex"},
+    {"name": "Retool",          "portal": "greenhouse", "id": "retool"},
+    {"name": "Deel",            "portal": "greenhouse", "id": "deel"},
+    {"name": "Clerk",           "portal": "greenhouse", "id": "clerk"},
+    {"name": "Vercel",          "portal": "lever",      "id": "vercel"},
+    {"name": "Supabase",        "portal": "ashby",      "id": "supabase"},
+    {"name": "Linear",          "portal": "ashby",      "id": "linear"},
+    {"name": "Loom",            "portal": "greenhouse", "id": "loom"},
+    {"name": "Webflow",         "portal": "greenhouse", "id": "webflow"},
+    {"name": "Amplitude",       "portal": "greenhouse", "id": "amplitude"},
+    {"name": "Segment",         "portal": "greenhouse", "id": "segment"},
+    {"name": "Mixpanel",        "portal": "greenhouse", "id": "mixpanel"},
+    {"name": "PostHog",         "portal": "ashby",      "id": "posthog"},
+    {"name": "Descript",        "portal": "greenhouse", "id": "descript"},
+    {"name": "Scale AI",        "portal": "greenhouse", "id": "scaleai"},
+    {"name": "Cohere",          "portal": "greenhouse", "id": "cohere"},
+    {"name": "Perplexity",      "portal": "ashby",      "id": "perplexityai"},
+    {"name": "Harvey",          "portal": "ashby",      "id": "harvey"},
+    {"name": "Cursor",          "portal": "ashby",      "id": "anysphere"},
+    {"name": "Glean",           "portal": "greenhouse", "id": "glean"},
+    {"name": "Coda",            "portal": "greenhouse", "id": "coda"},
+    {"name": "Notion",          "portal": "greenhouse", "id": "notion"},
+    {"name": "Figma",           "portal": "greenhouse", "id": "figma"},
+
+    # YC India-connected or remote-friendly
+    {"name": "Razorpay",        "portal": "greenhouse", "id": "razorpay"},
+    {"name": "Postman",         "portal": "greenhouse", "id": "postman"},
+    {"name": "BrowserStack",    "portal": "greenhouse", "id": "browserstack"},
+    {"name": "Hasura",          "portal": "lever",      "id": "hasura"},
+    {"name": "Setu",            "portal": "lever",      "id": "setu"},
+]
+
 # Department-specific keywords for job relevance
 DEPARTMENTS = {
     "engineering": [
