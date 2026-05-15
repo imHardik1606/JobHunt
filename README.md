@@ -66,6 +66,37 @@ python main.py apply {job_id}
 - `python main.py scan data remote` -> Data roles, remote only.
 - `python main.py scan engineering india yc` -> Engineering roles in India + YC startups.
 
+## 🔄 Workflow
+
+```mermaid
+graph TD
+    subgraph Discovery ["1. Job Discovery"]
+        A1[Greenhouse/Lever/Ashby APIs] --> B
+        A2[YC Work at a Startup] --> B
+        A3[Instahyre Scraper] --> B
+    end
+
+    B{Deduplication & Filter} -- New Relevant Jobs --> C
+
+    subgraph Scoring ["2. Parallel AI Scoring"]
+        C[KeyPool Manager] --> D1[Gemini 1.5 Flash]
+        C[KeyPool Manager] --> D2[Groq Llama 3]
+        C[KeyPool Manager] --> D3[OpenRouter Free]
+        D1 & D2 & D3 --> E[Match Result: Grade, Score, Verdict]
+    end
+
+    E --> F[(Local Database)]
+
+    subgraph Workflow ["3. Application Workflow"]
+        F --> G[python main.py pipeline]
+        G -- Select Job --> H[Resume Tailoring]
+        H --> I[PDF Generation]
+        I --> J[Outreach Research]
+        J --> K[Log to Google Sheets]
+        K --> L[Launch Browser]
+    end
+```
+
 ## 🏗️ Architecture
 
 ### High-Speed Scoring Engine
