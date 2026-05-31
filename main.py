@@ -687,32 +687,57 @@ def cmd_outreach_research():
 
 def show_help():
     # Get Stats for Help Text
-    all_jobs = get_all_jobs()
-    total = len(all_jobs)
-    applied = len([j for j in all_jobs if j.get("status") == "applied"])
-    pending = len([j for j in all_jobs if j.get("status") == "new"])
+    try:
+        all_jobs = get_all_jobs()
+        total = len(all_jobs)
+        applied = len([j for j in all_jobs if j.get("status") == "applied"])
+        pending = len([j for j in all_jobs if j.get("status") == "new"])
+    except:
+        total, applied, pending = 0, 0, 0
 
-    help_text = Text.from_markup(
-        f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
-        "Usage: [bold cyan]python main.py <command> [args][/]\n\n"
-        "[bold cyan]FIND JOBS[/]\n"
-        "  scan [dept] [level] [location] [yc]    Scan job portals\n"
-        "  internships [india|remote]             YC internships only\n"
-        "  pipeline [min_score]                   View ranked matches\n\n"
-        "[bold green]APPLY[/]\n"
-        "  apply {job_id}                         Full apply workflow\n"
-        "  outreach \"Company Role\"                Outreach research\n\n"
-        "[bold yellow]TRACK[/]\n"
-        "  status                                 Pipeline stats\n"
-        "  sheets_setup                           Sheets setup guide\n\n"
-        "[bold dim]EXAMPLES[/]\n"
-        "  python main.py scan engineering fresher yc\n"
-        "  python main.py scan engineering intern india\n"
-        "  python main.py internships remote\n"
-        "  python main.py pipeline 7\n"
-        "  python main.py apply 3"
-    )
-    console.print(Panel(help_text, title="JobHunt CLI", expand=False))
+    help_content = Text()
+    
+    # Stats Line
+    help_content.append(f"Jobs tracked: ", style="dim")
+    help_content.append(str(total), style="bold blue")
+    help_content.append(" | Applied: ", style="dim")
+    help_content.append(str(applied), style="bold green")
+    help_content.append(" | Pending: ", style="dim")
+    help_content.append(str(pending), style="bold yellow")
+    help_content.append("\n\n")
+
+    # Group 1: FIND JOBS
+    help_content.append("FIND JOBS\n", style="bold cyan")
+    help_content.append("    scan [dept] [level] [location] [yc]    ", style="white")
+    help_content.append("Scan job portals\n", style="dim")
+    help_content.append("    internships [india|remote]             ", style="white")
+    help_content.append("YC internships only\n", style="dim")
+    help_content.append("    pipeline [min_score]                   ", style="white")
+    help_content.append("View ranked matches\n\n", style="dim")
+
+    # Group 2: APPLY
+    help_content.append("APPLY\n", style="bold green")
+    help_content.append("    apply {job_id}                         ", style="white")
+    help_content.append("Full apply workflow\n", style="dim")
+    help_content.append("    outreach \"Company Role\"                ", style="white")
+    help_content.append("Outreach research\n\n", style="dim")
+
+    # Group 3: TRACK
+    help_content.append("TRACK\n", style="bold yellow")
+    help_content.append("    status                                 ", style="white")
+    help_content.append("Pipeline stats\n", style="dim")
+    help_content.append("    sheets_setup                           ", style="white")
+    help_content.append("Sheets setup guide\n\n", style="dim")
+
+    # Group 4: EXAMPLES
+    help_content.append("EXAMPLES\n", style="bold dim")
+    help_content.append("    python main.py scan engineering fresher yc\n", style="dim")
+    help_content.append("    python main.py scan engineering intern india\n", style="dim")
+    help_content.append("    python main.py internships remote\n", style="dim")
+    help_content.append("    python main.py pipeline 7\n", style="dim")
+    help_content.append("    python main.py apply 3", style="dim")
+
+    console.print(Panel(help_content, title="[bold]JobHunt CLI[/]", expand=False, border_style="blue"))
 
 def main():
     import difflib
