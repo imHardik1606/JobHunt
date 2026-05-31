@@ -5,7 +5,7 @@ from scanner.ashby import fetch_jobs as fetch_ashby
 from scanner.base import Job
 from scanner import ycombinator
 from scanner import instahyre
-from config import COMPANIES, YC_COMPANIES, get_department_keywords
+from config import COMPANIES, YC_COMPANIES, get_department_keywords, get_experience_keywords
 
 PORTAL_FETCHERS = {
     "greenhouse": fetch_greenhouse,
@@ -38,6 +38,14 @@ def is_relevant(job: Job, keywords: list[str]) -> bool:
     search_text = (job.title + " " + job.description).lower()
     return any(keyword.lower() in search_text for keyword in keywords)
 
+def matches_experience(job, exp_keywords: list[str]) -> bool:
+    if not exp_keywords:
+        return True   # "any" — no filter
+    title = job["title"] if isinstance(job, dict) else job.title
+    desc = job["description"] if isinstance(job, dict) else job.description
+    text = (title + " " + desc).lower()
+    return any(kw.lower() in text for kw in exp_keywords)
+
 def deduplicate_by_url(jobs: list[Job]) -> list[Job]:
     """
     Removes duplicate jobs based on URL, keeping the first occurrence.
@@ -50,14 +58,13 @@ def deduplicate_by_url(jobs: list[Job]) -> list[Job]:
             unique.append(job)
     return unique
 
-def scan_all(department: str = "engineering", country: str = None, include_yc: bool = False, include_indian_portals: bool = False) -> list[Job]:
+def scan_all(department: str = "engineering", experience: str = "fresher", country: str = None, include_yc: bool = False, include_indian_portals: bool = False) -> list[Job]:
     """
     Orchestrates the scanning of all configured companies across different portals.
     """
     keywords = get_department_keywords(department)
-    scan_msg = f"\nScanning for [bold]{department.upper()}[/] roles"
-    if country:
-        scan_msg += f" in [bold]{country.upper()}[/] (or Remote)"
+    exp_keywords = get_experience_keywords(experience)
+    scan_msg = f"\nScanning [bold]{department.upper()}[/] jobs | Level: [bold]{experience.upper()}[/]"
     print(f"{scan_msg}...")
     
     all_relevant_jobs = []
@@ -100,7 +107,7 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
             # Clean description for relevance check and for later AI use
             job.description = clean_html(job.description)
             
-            if is_relevant(job, keywords):
+            if is_relevant(job, keywords) and matches_experience(job, exp_keywords):
                 # Filter by location if country is provided
                 if country:
                     loc = job.location.lower()
@@ -134,7 +141,7 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
                 
                 # Clean and filter
                 job.description = clean_html(job.description)
-                if is_relevant(job, keywords):
+                if is_relevant(job, keywords) and matches_experience(job, exp_keywords):
                     if country:
                         loc = job.location.lower()
                         target = country.lower()
@@ -166,7 +173,7 @@ def scan_all(department: str = "engineering", country: str = None, include_yc: b
                     portal=jd["portal"]
                 )
                 job.description = clean_html(job.description)
-                if is_relevant(job, keywords):
+                if is_relevant(job, keywords) and matches_experience(job, exp_keywords):
                     # For Instahyre we already filtered by location in the fetch_jobs call
                     # but we keep the logic for consistency
                     if country:

@@ -28,20 +28,20 @@ console = Console()
 def cmd_scan():
     """
     Scans portals for new jobs and scores them using AI.
-    Usage: python main.py scan [dept] [india|remote] [yc]
+    Usage: python main.py scan [dept] [flags]
     """
     args = set(arg.lower() for arg in sys.argv[2:])
     
-    # department = first arg that is NOT "india", "remote", "yc" — default "engineering"
-    department = "engineering"
-    for arg in sys.argv[2:]:
-        low_arg = arg.lower()
-        if low_arg not in ["india", "remote", "yc"]:
-            department = low_arg
-            break
-    
-    country = "india" if "india" in args else "remote" if "remote" in args else None
+    EXPERIENCE_FLAGS = {"fresher", "intern", "junior", "mid", "senior", "any"}
+    COUNTRY_FLAGS = {"india", "remote"}
+    PORTAL_FLAGS = {"yc"}
+
+    experience = next((a for a in args if a in EXPERIENCE_FLAGS), "fresher")
+    country    = next((a for a in args if a in COUNTRY_FLAGS), None)
     include_yc = "yc" in args
+    department = next((a for a in args if a not in
+                       EXPERIENCE_FLAGS | COUNTRY_FLAGS | PORTAL_FLAGS), "engineering")
+    
     include_indian_portals = "india" in args
     
     try:
@@ -51,23 +51,21 @@ def cmd_scan():
         console.print(f"[bold red]Error:[/] {e}")
         return
 
-    header_msg = f"[bold blue]Scanning {department.upper()} jobs"
-    flags = []
-    if country:
-        flags.append(f"{country.upper()} filter ON")
+    header_parts = [
+        f"Scanning [{department.upper()}]",
+        f"Level: {experience.upper()}"
+    ]
     if include_yc:
-        flags.append("YC companies INCLUDED")
-    if include_indian_portals:
-        flags.append("Indian portals (Instahyre) INCLUDED")
+        header_parts.append("YC: ON")
+    if country:
+        header_parts.append(f"Location: {country.title()}")
     
-    if flags:
-        header_msg += " | " + " | ".join(flags)
-    header_msg += " across all portals...[/]"
-    
+    header_msg = "[bold blue]" + " | ".join(header_parts) + "[/]"
     console.print(Panel(header_msg, expand=False))
     
     jobs = scan_all(
         department=department, 
+        experience=experience,
         country=country, 
         include_yc=include_yc, 
         include_indian_portals=include_indian_portals

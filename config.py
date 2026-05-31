@@ -109,6 +109,33 @@ DEPARTMENTS = {
 
 DEFAULT_DEPARTMENT = "engineering"
 
+# Experience levels config
+EXPERIENCE_LEVELS = {
+    "fresher": [
+        "fresher", "fresh graduate", "entry level", "entry-level",
+        "0-1 year", "0 to 1 year", "no experience", "new grad",
+        "new graduate", "recent graduate", "graduating 2025",
+        "graduating 2026", "junior", "associate"
+    ],
+    "intern": [
+        "intern", "internship", "co-op", "coop", "trainee",
+        "apprentice", "student", "part-time"
+    ],
+    "junior": [
+        "junior", "jr.", "1-2 year", "1 to 2 year",
+        "1-3 year", "associate engineer"
+    ],
+    "mid": [
+        "mid level", "mid-level", "3-5 year", "3 to 5 year",
+        "software engineer ii", "sde 2", "sde2"
+    ],
+    "senior": [
+        "senior", "sr.", "5+ year", "lead", "staff", "principal"
+    ]
+}
+
+DEFAULT_EXPERIENCE = "fresher"
+
 # Negative Keywords (Discard senior/unsuitable roles immediately)
 NEGATIVE_KEYWORDS = [
     "senior", "sr.", "lead", "staff", "principal", "manager", 
@@ -145,3 +172,12 @@ def get_department_keywords(department: str) -> list[str]:
         available = ", ".join(DEPARTMENTS.keys())
         raise ValueError(f"Unknown department '{dept}'. Available: {available}")
     return DEPARTMENTS[dept]
+
+def get_experience_keywords(level: str) -> list[str]:
+    level = level.lower().strip()
+    if level == "any":
+        return []   # empty means no filter
+    if level not in EXPERIENCE_LEVELS:
+        available = ", ".join(list(EXPERIENCE_LEVELS.keys()) + ["any"])
+        raise ValueError(f"Unknown level '{level}'. Available: {available}")
+    return EXPERIENCE_LEVELS[level]
