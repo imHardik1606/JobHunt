@@ -177,6 +177,77 @@ def fetch_internships(remote_only: bool = False) -> list[dict]:
     """
     return fetch_jobs(job_type="intern", remote_only=remote_only)
 
+def fetch_internships_only(location_hint: str = None) -> list[dict]:
+    print("Scanning Work at a Startup — INTERNSHIPS only...")
+    url = "https://www.workatastartup.com/jobs?role=eng&jobType=intern"
+    try:
+        results = asyncio.run(_scrape_page(url))
+    except Exception as e:
+        print(f"Error fetching YC internships: {e}")
+        results = []
+
+    if location_hint:
+        hint = location_hint.lower().strip()
+        filtered = []
+        for job in results:
+            loc = job.get("location", "").lower()
+            if hint in loc or "remote" in loc or "anywhere" in loc:
+                filtered.append(job)
+        results = filtered
+
+    try:
+        print(f"  → {len(results)} internships found")
+    except UnicodeEncodeError:
+        print(f"  -> {len(results)} internships found")
+    return results
+
+def fetch_yc_company_internships(companies: list[dict] = None) -> list[dict]:
+    from config import EXPERIENCE_LEVELS, YC_COMPANIES
+    from scanner.greenhouse import fetch_jobs as fetch_greenhouse
+    from scanner.lever import fetch_jobs as fetch_lever
+    from scanner.ashby import fetch_jobs as fetch_ashby
+    from scanner import clean_html, is_relevant
+
+    if companies is None:
+        companies = YC_COMPANIES
+
+    target_ids = {"stripe", "brex", "rippling", "retool", "deel", "notion",
+                  "figma", "amplitude", "posthog", "supabase", "linear",
+                  "razorpay", "browserstack", "postman", "hasura"}
+
+    filtered_companies = [c for c in companies if c["id"].lower() in target_ids or c["name"].lower() in target_ids]
+
+    portal_fetchers = {
+        "greenhouse": fetch_greenhouse,
+        "lever": fetch_lever,
+        "ashby": fetch_ashby
+    }
+
+    intern_keywords = EXPERIENCE_LEVELS["intern"]
+    combined_jobs = []
+
+    for company in filtered_companies:
+        name = company["name"]
+        portal = company["portal"]
+        company_id = company["id"]
+        
+        fetcher = portal_fetchers.get(portal)
+        if not fetcher:
+            continue
+            
+        try:
+            jobs = fetcher(name, company_id)
+            if not jobs:
+                continue
+            for job in jobs:
+                job.description = clean_html(job.description)
+                if is_relevant(job, intern_keywords):
+                    combined_jobs.append(job.to_dict())
+        except Exception as e:
+            print(f"Error fetching internships from {name} ({portal}): {e}")
+
+    return combined_jobs
+
 if __name__ == "__main__":
     jobs = fetch_internships(remote_only=False)
     print(f"\nFound {len(jobs)} YC internships")

@@ -10,7 +10,7 @@ from rich.progress import Progress
 from rich.prompt import Prompt, Confirm
 
 # Project Imports
-from scanner import scan_all
+from scanner import scan_all, matches_experience
 from scorer.match import score_job
 from tailor.resume import tailor_resume, save_tailored_cv
 from pdf.generator import generate_pdf
@@ -20,7 +20,7 @@ from db.store import (
     update_score, update_score_result, get_unscored_jobs, get_jobs_by_status, get_all_jobs,
     get_jobs_by_score, get_job_by_id
 )
-from config import MIN_SCORE_TO_SHOW, validate_config, get_department_keywords, DEPARTMENTS
+from config import MIN_SCORE_TO_SHOW, validate_config, get_department_keywords, DEPARTMENTS, get_experience_keywords
 from scorer.research import run_outreach_research, save_outreach_report
 
 console = Console()
@@ -141,6 +141,66 @@ def cmd_scan():
     
     console.print("\n[bold green]Scan complete![/] Run [cyan]'python main.py review'[/] to see high-potential leads.")
 
+def cmd_internships():
+    """
+    Search YC internships only.
+    Usage: python main.py internships [india|remote]
+    """
+    location = sys.argv[2].lower() if len(sys.argv) > 2 else None
+    
+    console.print("[bold blue]Searching YC internships...[/]")
+    
+    from scanner.ycombinator import fetch_internships_only, fetch_yc_company_internships
+    
+    # Fetch from both sources
+    waas_jobs = fetch_internships_only(location_hint=location)
+    yc_jobs = fetch_yc_company_internships()
+    
+    # Combine and deduplicate by URL
+    all_raw_jobs = waas_jobs + yc_jobs
+    seen_urls = set()
+    combined_jobs = []
+    for job in all_raw_jobs:
+        url = job.get("url")
+        if url not in seen_urls:
+            seen_urls.add(url)
+            combined_jobs.append(job)
+            
+    # Filter by experience level "intern" using matches_experience()
+    exp_keywords = get_experience_keywords("intern")
+    filtered_jobs = [
+        job for job in combined_jobs
+        if matches_experience(job, exp_keywords)
+    ]
+    
+    # Save to DB
+    inserted = save_jobs(filtered_jobs)
+    skipped = len(filtered_jobs) - inserted
+    console.print(f"OK: Found {len(filtered_jobs)} total internships. [green]{inserted} new[/], [yellow]{skipped} skipped (duplicates)[/].")
+    
+    # Score with score_jobs_parallel
+    unscored = get_unscored_jobs()
+    saved_ids = {j["id"] for j in filtered_jobs}
+    to_score = [j for j in unscored if j["id"] in saved_ids]
+    
+    if to_score:
+        from scorer.parallel import score_jobs_parallel, get_optimal_worker_count
+        from scorer.key_pool import KeyPool
+        try:
+            pool = KeyPool()
+            workers = get_optimal_worker_count(pool)
+            score_jobs_parallel(to_score, max_workers=workers)
+        except Exception as e:
+            console.print(f"[red]Scoring failed: {e}[/]")
+    else:
+        console.print("[bold green]All jobs already scored.[/]")
+        
+    # Show results directly in pipeline view filtered to these jobs
+    cmd_pipeline(jobs_list=filtered_jobs, min_score=0.0)
+    
+    # Print footer
+    console.print(f"\nFound {len(filtered_jobs)} internships across YC portfolio + Work at a Startup")
+
 def cmd_review(department=None):
     """
     Interactive review of high-scoring job leads.
@@ -162,7 +222,7 @@ def cmd_review(department=None):
             return
 
         # Sort by score descending
-        high_potential.sort(key=lambda x: x.get("score", 0), reverse=True)
+        high_potential.sort(key=lambda x: x.get("score") if x.get("score") is not None else 0, reverse=True)
 
         title = f"JobHunt Opportunity Dashboard {f'({department.upper()})' if department else ''}"
         table = Table(title=title, box=None, header_style="bold blue")
@@ -174,7 +234,7 @@ def cmd_review(department=None):
         table.add_column("Portal", style="dim")
 
         for i, job in enumerate(high_potential, 1):
-            score = job.get("score", 0)
+            score = job.get("score") if job.get("score") is not None else 0
             score_style = "green" if score >= 8 else "yellow" if score >= 6 else "red"
             
             # Extract grade from score_json if available
@@ -423,15 +483,28 @@ def cmd_apply():
     
     cmd_apply_workflow(job)
 
-def cmd_pipeline():
+def cmd_pipeline(jobs_list: list = None, min_score: float = None):
     """
     Shows all scored jobs ranked by score.
     """
     import json
-    min_score = float(sys.argv[2]) if len(sys.argv) > 2 else MIN_SCORE_TO_SHOW
+    if min_score is None:
+        try:
+            min_score = float(sys.argv[2]) if len(sys.argv) > 2 else MIN_SCORE_TO_SHOW
+        except ValueError:
+            min_score = MIN_SCORE_TO_SHOW
+            
+    job_ids = [j["id"] for j in jobs_list] if jobs_list is not None else None
     
     while True:
-        jobs = get_jobs_by_score(min_score)
+        if job_ids is not None:
+            # Refresh from DB
+            all_db_jobs = get_all_jobs()
+            jobs = [j for j in all_db_jobs if j["id"] in job_ids and (j.get("score") or 0) >= min_score]
+            # Sort by score descending
+            jobs.sort(key=lambda x: x.get("score") if x.get("score") is not None else 0, reverse=True)
+        else:
+            jobs = get_jobs_by_score(min_score)
         
         if not jobs:
             console.print(f"\n[bold yellow]No jobs found with score >= {min_score}.[/]")
@@ -458,7 +531,7 @@ def cmd_pipeline():
                 except: pass
             
             grade = analysis.get("grade", "N/A")
-            score = job.get("score", 0)
+            score = job.get("score") if job.get("score") is not None else 0
             total_score += score
             
             effort = analysis.get("effort_to_apply", "medium")
@@ -640,6 +713,7 @@ def main():
             "    python main.py scan engineering india yc  [dim](India + YC)[/]\n"
             "    python main.py scan data remote           [dim](Data roles, remote only)[/]\n"
             "  Available depts: engineering, data, product, design, sales, marketing\n"
+            "  [bold green]internships [loc][/]  Search YC internships only (india, remote)\n"
             "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
             "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
             "  [bold green]apply {id}[/]       Run full apply workflow for a specific job\n"
@@ -655,6 +729,8 @@ def main():
     try:
         if command == "scan":
             cmd_scan()
+        elif command == "internships":
+            cmd_internships()
         elif command == "review":
             department = sys.argv[2].lower() if len(sys.argv) > 2 else None
             cmd_review(department=department)
