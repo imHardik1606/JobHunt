@@ -685,7 +685,37 @@ def cmd_outreach_research():
         path = save_outreach_report(result, company, role)
         console.print(f"[green]Saved to: {path}[/]")
 
+def show_help():
+    # Get Stats for Help Text
+    all_jobs = get_all_jobs()
+    total = len(all_jobs)
+    applied = len([j for j in all_jobs if j.get("status") == "applied"])
+    pending = len([j for j in all_jobs if j.get("status") == "new"])
+
+    help_text = Text.from_markup(
+        f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
+        "Usage: [bold cyan]python main.py <command> [args][/]\n\n"
+        "[bold cyan]FIND JOBS[/]\n"
+        "  scan [dept] [level] [location] [yc]    Scan job portals\n"
+        "  internships [india|remote]             YC internships only\n"
+        "  pipeline [min_score]                   View ranked matches\n\n"
+        "[bold green]APPLY[/]\n"
+        "  apply {job_id}                         Full apply workflow\n"
+        "  outreach \"Company Role\"                Outreach research\n\n"
+        "[bold yellow]TRACK[/]\n"
+        "  status                                 Pipeline stats\n"
+        "  sheets_setup                           Sheets setup guide\n\n"
+        "[bold dim]EXAMPLES[/]\n"
+        "  python main.py scan engineering fresher yc\n"
+        "  python main.py scan engineering intern india\n"
+        "  python main.py internships remote\n"
+        "  python main.py pipeline 7\n"
+        "  python main.py apply 3"
+    )
+    console.print(Panel(help_text, title="JobHunt CLI", expand=False))
+
 def main():
+    import difflib
     # Database always initialized
     init_db()
     
@@ -697,55 +727,48 @@ def main():
         sys.exit(1)
         
     if len(sys.argv) < 2:
-        # Get Stats for Help Text
-        all_jobs = get_all_jobs()
-        total = len(all_jobs)
-        applied = len([j for j in all_jobs if j.get("status") == "applied"])
-        pending = len([j for j in all_jobs if j.get("status") == "new"])
-
-        help_text = Text.from_markup(
-            f"Jobs tracked: [bold blue]{total}[/] | Applied: [bold green]{applied}[/] | Pending review: [bold yellow]{pending}[/]\n\n"
-            "Usage: [bold cyan]python main.py <command> [args][/]\n\n"
-            "Commands:\n"
-            "  [bold green]scan [dept] [flags][/]  Scan jobs by department and flags (india, remote, yc)\n"
-            "  Examples:\n"
-            "    python main.py scan engineering yc        [dim](YC companies only)[/]\n"
-            "    python main.py scan engineering india yc  [dim](India + YC)[/]\n"
-            "    python main.py scan data remote           [dim](Data roles, remote only)[/]\n"
-            "  Available depts: engineering, data, product, design, sales, marketing\n"
-            "  [bold green]internships [loc][/]  Search YC internships only (india, remote)\n"
-            "  [bold green]review [dept][/]    Browse high-scoring jobs and generate resumes\n"
-            "  [bold green]pipeline [score][/]  View all ranked job matches (default: 6+)\n"
-            "  [bold green]apply {id}[/]       Run full apply workflow for a specific job\n"
-            "  [bold green]outreach_research[/]  Generate LinkedIn search strings and cold email templates\n"
-            "  [bold green]sheets_setup[/]      Show Google Sheets setup instructions\n"
-            "  [bold green]status[/]            Show application pipeline statistics"
-        )
-        console.print(Panel(help_text, title="JobHunt CLI", expand=False))
+        show_help()
         return
 
     command = sys.argv[1].lower()
     
+    if command in ["help", "--help", "-h"]:
+        show_help()
+        return
+
     try:
         if command == "scan":
             cmd_scan()
         elif command == "internships":
             cmd_internships()
+        elif command == "pipeline":
+            cmd_pipeline()
         elif command == "review":
             department = sys.argv[2].lower() if len(sys.argv) > 2 else None
             cmd_review(department=department)
-        elif command == "pipeline":
-            cmd_pipeline()
         elif command == "apply":
             cmd_apply()
+        elif command in ["outreach", "outreach_research"]:
+            cmd_outreach_research()
         elif command == "status":
             cmd_status()
         elif command == "sheets_setup":
             print_setup_instructions()
-        elif command == "outreach_research":
-            cmd_outreach_research()
+        elif command == "audit":
+            console.print("[bold yellow]The 'audit' command (Score your CV against a JD) is a placeholder for future development.[/]")
+        elif command == "track":
+            console.print("[bold yellow]The 'track' command (View full application tracker) is a placeholder for future development.[/]")
+        elif command == "demo":
+            console.print("[bold yellow]The 'demo' command (Run demo with sample data) is a placeholder for future development.[/]")
         else:
-            console.print(f"[red]Unknown command: {command}[/]")
+            # Handle typos gracefully
+            valid_commands = ["scan", "internships", "pipeline", "review", "apply", "outreach", "status", "sheets_setup", "audit", "track", "demo", "help"]
+            matches = difflib.get_close_matches(command, valid_commands, n=1, cutoff=0.6)
+            if matches:
+                console.print(f"[bold red]Unknown command '{command}'. Did you mean: {matches[0]}?[/]")
+            else:
+                console.print(f"[bold red]Unknown command '{command}'.[/]")
+            show_help()
     except KeyboardInterrupt:
         console.print("\n[yellow]Exiting...[/]")
         sys.exit(0)
