@@ -53,18 +53,41 @@ python main.py apply {job_id}
 
 ## 🕹️ Commands
 
-| Command | Description |
-| :--- | :--- |
-| `python main.py scan [dept] [flags]` | Scans jobs with optional flags: `india`, `remote`, `yc`. |
-| `python main.py pipeline [score]` | Shows a ranked table of all scored jobs. Default shows 6+. |
-| `python main.py apply {id}` | **The Master Workflow**: Runs tailoring, PDF, outreach, and logs results. |
-| `python main.py sheets_setup` | Shows step-by-step instructions for Google Sheets integration. |
-| `python main.py status` | Summary of your application pipeline statistics. |
+### 🔍 Find Jobs
+| Command | What it does | Example |
+|---|---|---|
+| `scan` | Scan portals by dept + level + location | `python main.py scan engineering fresher yc` |
+| `internships` | YC + WaaS internships only | `python main.py internships india` |
+| `pipeline` | View ranked scored matches | `python main.py pipeline 7` |
 
-### Flag Examples:
-- `python main.py scan engineering yc` -> Only YC companies & YC job board.
-- `python main.py scan data remote` -> Data roles, remote only.
-- `python main.py scan engineering india yc` -> Engineering roles in India + YC startups.
+### 📨 Apply
+| Command | What it does | Example |
+|---|---|---|
+| `apply` | Full apply workflow | `python main.py apply 3` |
+| `outreach` | Standalone outreach research | `python main.py outreach "Razorpay Backend"` |
+
+### 📊 Track
+| Command | What it does | Example |
+|---|---|---|
+| `status` | Pipeline stats | `python main.py status` |
+| `sheets_setup` | Google Sheets setup guide | `python main.py sheets_setup` |
+
+### Scan Flags
+A table showing all available flags that can be combined:
+
+| Flag | Options | Default | Example |
+|---|---|---|---|
+| Department | engineering, data, product, design, sales, marketing | engineering | `scan data` |
+| Experience | fresher, intern, junior, mid, senior, any | fresher | `scan engineering intern` |
+| Location | india, remote | none (all) | `scan engineering india` |
+| Portal | yc | off | `scan engineering yc` |
+
+### 💡 Example Combinations
+- `python main.py scan engineering fresher yc`
+- `python main.py scan engineering intern india yc`
+- `python main.py scan data fresher remote`
+- `python main.py internships india`
+- `python main.py scan engineering any`
 
 ## 🔄 Workflow
 
